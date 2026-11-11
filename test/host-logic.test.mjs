@@ -1,11 +1,12 @@
 // Logic harness for dsh-auto-continue's Host half: a fake Cordis context, a fake
-// schedule service, and a fake HTTP route. Proves the limit -> book -> toggle ->
-// cancel -> resume state machine without touching the running Harness.
+// schedule service, and a fake HTTP route. Proves the limit -> book -> per-session
+// toggle -> cancel -> resume state machine without touching the running Harness.
 // The plugin ships with automatic continuation off, so the harness starts by
-// proving that fresh state is off and then turns the switch on explicitly.
+// proving that fresh state is off, then turns one session on explicitly and
+// shows that another session's choice is independent.
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
-import { existsSync, rmSync, readFileSync } from 'node:fs'
+import { existsSync, rmSync, readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 const pluginDir = new URL('../', import.meta.url)
@@ -13,6 +14,9 @@ const statePath = fileURLToPath(new URL('state.json', pluginDir))
 if (existsSync(statePath)) rmSync(statePath)
 
 const { apply, Config } = await import(new URL('index.js', pluginDir).href)
+
+/** Most session choices the state file keeps; the oldest fall off first. */
+const SESSION_CAP = 500
 
 /** Fake schedule service that records every management call. */
 function fakeSchedule() {
@@ -113,13 +117,25 @@ async function fire(ctx, name, payload) {
   return decision
 }
 
-/** Call the registered Host route with a synthetic request. */
-async function request(ctx, method, body) {
+/** Report one spent usage limit for a root conversation. */
+async function spendLimit(ctx, sessionId, turn) {
+  await fire(ctx, 'agent/request-error', {
+    turn,
+    step: 1,
+    provider: 'minimax-api',
+    failure: { code: 'QUOTA', message: 'quota exceeded', status: 402 },
+    signal: new AbortController().signal,
+    agent: { session: { id: sessionId, header: { id: sessionId, isSeeded: false } } },
+  })
+}
+
+/** Call the registered Host route with a synthetic request and optional query. */
+async function request(ctx, method, body, query) {
   const route = ctx.routes[0]
   assert.ok(route !== undefined, 'no route registered')
   const req = new EventEmitter()
   req.method = method
-  req.url = route.path
+  req.url = query === undefined ? route.path : `${route.path}?${new URLSearchParams(query).toString()}`
   const response = {
     status: undefined,
     headers: undefined,
@@ -146,63 +162,65 @@ async function request(ctx, method, body) {
   return { status: response.status, json: JSON.parse(response.body) }
 }
 
+/** The explicit session choices currently stored on disk. */
+function storedSessions() {
+  return JSON.parse(readFileSync(statePath, 'utf8')).sessions
+}
+
 const schedule = fakeSchedule()
 const ctx = fakeContext(schedule)
 await apply(ctx, Config({}))
 
-// 1. Fresh state: off, supported, nothing booked.
+// 1. Fresh state: nothing is on, nothing is booked, no session is named.
 let state = await request(ctx, 'GET')
 assert.equal(state.status, 200)
 assert.equal(state.json.enabled, false)
+assert.equal(state.json.sessionId, null)
 assert.equal(state.json.supported, true)
 assert.deepEqual(state.json.pending, [])
+assert.deepEqual(state.json.sessions, [])
 console.log('ok 1 fresh state is off:', JSON.stringify(state.json))
 
-// 2. The plugin starts off, so the switch is turned on before anything is booked.
-state = await request(ctx, 'POST', { action: 'toggle' })
-assert.equal(state.json.enabled, true)
-assert.equal(JSON.parse(readFileSync(statePath, 'utf8')).enabled, true)
-console.log('ok 2 switch turned on')
+// 2. A session with no stored choice uses the plugin config default (off).
+state = await request(ctx, 'GET', undefined, { sessionId: 'session-test' })
+assert.equal(state.json.sessionId, 'session-test')
+assert.equal(state.json.enabled, false)
+assert.deepEqual(state.json.pending, [])
+assert.deepEqual(state.json.sessions, [])
+console.log('ok 2 no stored choice reports the config default:', JSON.stringify(state.json))
 
-// 3. A spent limit books exactly one continuation for that session.
-const limitFailure = { code: 'QUOTA', message: 'quota exceeded', status: 402 }
-await fire(ctx, 'agent/request-error', {
-  turn: 1,
-  step: 1,
-  provider: 'minimax-api',
-  failure: limitFailure,
-  signal: new AbortController().signal,
-  agent: { session: { id: 'session-test', header: { id: 'session-test', isSeeded: false } } },
-})
+// 3. Turning that session on stores only the explicit choice.
+state = await request(ctx, 'POST', { action: 'toggle', sessionId: 'session-test' })
+assert.equal(state.json.sessionId, 'session-test')
+assert.equal(state.json.enabled, true)
+assert.deepEqual(state.json.sessions, ['session-test'])
+assert.deepEqual(storedSessions(), { 'session-test': true })
+console.log('ok 3 session switched on:', readFileSync(statePath, 'utf8').replace(/\s+/gu, ' '))
+
+// 4. A spent limit books exactly one continuation for that session.
+await spendLimit(ctx, 'session-test', 1)
 const created = schedule.calls.filter(call => call[0] === 'create')
 assert.equal(created.length, 1)
 assert.equal(created[0][1].target.kind, 'session')
 assert.equal(created[0][1].target.sessionId, 'session-test')
 assert.ok(created[0][1].prompt.includes('<auto_continue>'))
 assert.ok(created[0][1].timing.kind === 'after' && created[0][1].timing.after_seconds >= 60, `after_seconds ${created[0][1].timing.after_seconds}`)
-state = await request(ctx, 'GET')
+state = await request(ctx, 'GET', undefined, { sessionId: 'session-test' })
 assert.equal(state.json.pending.length, 1)
 assert.equal(state.json.pending[0].sessionId, 'session-test')
 assert.equal(state.json.pending[0].attempts, 1)
-console.log('ok 3 booked:', JSON.stringify(state.json.pending[0]), 'after', created[0][1].timing.after_seconds, 's')
+console.log('ok 4 booked:', JSON.stringify(state.json.pending[0]), 'after', created[0][1].timing.after_seconds, 's')
 
-// 4. A second limit failure moves the same task instead of adding one.
-await fire(ctx, 'agent/request-error', {
-  turn: 2,
-  step: 1,
-  provider: 'minimax-api',
-  failure: limitFailure,
-  signal: new AbortController().signal,
-  agent: { session: { id: 'session-test', header: { id: 'session-test', isSeeded: false } } },
-})
+// 5. A second limit failure moves the same task instead of adding one.
+await spendLimit(ctx, 'session-test', 2)
 assert.equal(schedule.calls.filter(call => call[0] === 'create').length, 1)
 assert.equal(schedule.calls.filter(call => call[0] === 'edit').length, 1)
-state = await request(ctx, 'GET')
+state = await request(ctx, 'GET', undefined, { sessionId: 'session-test' })
 assert.equal(state.json.pending.length, 1)
 assert.equal(state.json.pending[0].attempts, 2)
-console.log('ok 4 moved:', JSON.stringify(state.json.pending[0]))
+console.log('ok 5 moved:', JSON.stringify(state.json.pending[0]))
 
-// 5. A transient failure code changes nothing.
+// 6. A transient failure code changes nothing.
 await fire(ctx, 'agent/request-error', {
   turn: 3,
   step: 1,
@@ -212,136 +230,163 @@ await fire(ctx, 'agent/request-error', {
   agent: { session: { id: 'session-test', header: { id: 'session-test', isSeeded: false } } },
 })
 assert.equal(schedule.calls.filter(call => call[0] === 'create').length, 1)
-console.log('ok 5 transient failure ignored')
+console.log('ok 6 transient failure ignored')
 
-// 6. A delegated child session never books a reminder.
+// 7. A delegated child session never books a reminder.
 await fire(ctx, 'agent/request-error', {
   turn: 1,
   step: 1,
   provider: 'minimax-api',
-  failure: limitFailure,
+  failure: { code: 'QUOTA', message: 'quota exceeded', status: 402 },
   signal: new AbortController().signal,
   agent: { session: { id: 'session-child', header: { id: 'session-child', isSeeded: false, parentSession: 'session-test' } } },
 })
 assert.equal(schedule.calls.filter(call => call[0] === 'create').length, 1)
-console.log('ok 6 subagent skipped')
+console.log('ok 7 subagent skipped')
 
-// 7. Turning the switch off deletes the booked task and persists the choice.
-state = await request(ctx, 'POST', { action: 'toggle' })
+// 8. A second session can be turned on without touching the first one.
+state = await request(ctx, 'POST', { action: 'toggle', sessionId: 'session-b' })
+assert.equal(state.json.sessionId, 'session-b')
+assert.equal(state.json.enabled, true)
+assert.deepEqual(state.json.sessions, ['session-test', 'session-b'])
+assert.deepEqual(storedSessions(), { 'session-test': true, 'session-b': true })
+state = await request(ctx, 'GET', undefined, { sessionId: 'session-b' })
+assert.equal(state.json.enabled, true)
+console.log('ok 8 session B switched on independently:', JSON.stringify(state.json.sessions))
+
+// 9. Turning session A off leaves session B on, deletes only A's task, and the
+//    two sessions still read their own choice back.
+state = await request(ctx, 'POST', { action: 'toggle', sessionId: 'session-test', enabled: false })
+assert.equal(state.json.sessionId, 'session-test')
 assert.equal(state.json.enabled, false)
 assert.deepEqual(state.json.pending, [])
 assert.equal(schedule.tasks.size, 0)
-assert.equal(JSON.parse(readFileSync(statePath, 'utf8')).enabled, false)
-console.log('ok 7 toggle off persisted:', readFileSync(statePath, 'utf8').replace(/\s+/gu, ' '))
-
-// 8. With the switch off no new continuation is booked.
-await fire(ctx, 'agent/request-error', {
-  turn: 4,
-  step: 1,
-  provider: 'minimax-api',
-  failure: limitFailure,
-  signal: new AbortController().signal,
-  agent: { session: { id: 'session-test', header: { id: 'session-test', isSeeded: false } } },
-})
-assert.equal(schedule.calls.filter(call => call[0] === 'create').length, 1)
-console.log('ok 8 off books nothing')
-
-// 9. Turning it back on restores the service.
-state = await request(ctx, 'POST', { action: 'toggle' })
+assert.deepEqual(state.json.sessions, ['session-b'])
+assert.deepEqual(storedSessions(), { 'session-b': true })
+state = await request(ctx, 'GET', undefined, { sessionId: 'session-b' })
 assert.equal(state.json.enabled, true)
-console.log('ok 9 toggle on')
+state = await request(ctx, 'GET', undefined, { sessionId: 'session-test' })
+assert.equal(state.json.enabled, false)
+console.log('ok 9 session A off, session B still on; choices read independently')
 
-// 10. Book again, then a human message cancels the pending continuation.
-await fire(ctx, 'agent/request-error', {
-  turn: 5,
-  step: 1,
-  provider: 'minimax-api',
-  failure: limitFailure,
-  signal: new AbortController().signal,
-  agent: { session: { id: 'session-test', header: { id: 'session-test', isSeeded: false } } },
-})
-assert.equal(schedule.tasks.size, 1)
+// 10. The off session books nothing while the on session still books.
+await spendLimit(ctx, 'session-test', 4)
+assert.equal(schedule.calls.filter(call => call[0] === 'create').length, 1)
+await spendLimit(ctx, 'session-b', 1)
+assert.equal(schedule.calls.filter(call => call[0] === 'create').length, 2)
+const booked = schedule.calls.filter(call => call[0] === 'create').at(-1)
+assert.equal(booked[1].target.sessionId, 'session-b')
+state = await request(ctx, 'GET', undefined, { sessionId: 'session-b' })
+assert.equal(state.json.pending.length, 1)
+assert.equal(state.json.pending[0].attempts, 1)
+console.log('ok 10 off books nothing; on books:', JSON.stringify(state.json.pending[0]))
+
+// 11. Book again, then a human message cancels this session's pending continuation.
 ctx.handlers.get('session/event')[0](
-  { id: 'session-test' },
+  { id: 'session-b' },
   { type: 'user/message', data: { content: [{ type: 'text', text: 'actually do something else' }], source: { kind: 'user' } } },
 )
 await new Promise(resolve => setTimeout(resolve, 50))
 assert.equal(schedule.tasks.size, 0)
-state = await request(ctx, 'GET')
+state = await request(ctx, 'GET', undefined, { sessionId: 'session-b' })
 assert.deepEqual(state.json.pending, [])
-console.log('ok 10 human message cancelled the booking')
+console.log('ok 11 human message cancelled the booking')
 
-// 11. Delivered continuation is recognized, and the next limit counts as attempt 2 of the episode.
-await fire(ctx, 'agent/request-error', {
-  turn: 6,
-  step: 1,
-  provider: 'minimax-api',
-  failure: limitFailure,
-  signal: new AbortController().signal,
-  agent: { session: { id: 'session-test', header: { id: 'session-test', isSeeded: false } } },
-})
+// 12. Delivered continuation is recognized, and the next limit counts as attempt 2 of the episode.
+await spendLimit(ctx, 'session-b', 2)
 const bookedBeforeDelivery = [...schedule.tasks.keys()]
 assert.equal(bookedBeforeDelivery.length, 1)
 ctx.handlers.get('session/event')[0](
-  { id: 'session-test' },
+  { id: 'session-b' },
   { type: 'user/message', data: { content: [{ type: 'text', text: '<auto_continue>continue</auto_continue>' }], source: { kind: 'schedule' } } },
 )
 // The real service ends a one-shot task when it delivers; the fake mirrors that.
 schedule.tasks.delete(bookedBeforeDelivery[0])
-state = await request(ctx, 'GET')
+state = await request(ctx, 'GET', undefined, { sessionId: 'session-b' })
 assert.deepEqual(state.json.pending, [])
-await fire(ctx, 'agent/request-error', {
-  turn: 7,
-  step: 1,
-  provider: 'minimax-api',
-  failure: limitFailure,
-  signal: new AbortController().signal,
-  agent: { session: { id: 'session-test', header: { id: 'session-test', isSeeded: false } } },
-})
-state = await request(ctx, 'GET')
+await spendLimit(ctx, 'session-b', 3)
+state = await request(ctx, 'GET', undefined, { sessionId: 'session-b' })
 assert.equal(state.json.pending[0].attempts, 2)
-console.log('ok 11 episode attempt count:', JSON.stringify(state.json.pending[0]))
+console.log('ok 12 episode attempt count:', JSON.stringify(state.json.pending[0]))
 
-// 12. A completed turn releases the booking.
+// 13. A completed turn releases the booking.
 ctx.handlers.get('session/event')[0](
-  { id: 'session-test' },
-  { type: 'turn/end', data: { turn: 7, reason: { kind: 'completed' } } },
+  { id: 'session-b' },
+  { type: 'turn/end', data: { turn: 3, reason: { kind: 'completed' } } },
 )
 await new Promise(resolve => setTimeout(resolve, 50))
 assert.equal(schedule.tasks.size, 0)
-state = await request(ctx, 'GET')
+state = await request(ctx, 'GET', undefined, { sessionId: 'session-b' })
 assert.deepEqual(state.json.pending, [])
-console.log('ok 12 completed turn released the booking')
+console.log('ok 13 completed turn released the booking')
 
-// 13. An explicit cancel action clears one session's booking.
-await fire(ctx, 'agent/request-error', {
-  turn: 8,
-  step: 1,
-  provider: 'minimax-api',
-  failure: limitFailure,
-  signal: new AbortController().signal,
-  agent: { session: { id: 'session-test', header: { id: 'session-test', isSeeded: false } } },
-})
-state = await request(ctx, 'POST', { action: 'cancel', sessionId: 'session-test' })
+// 14. An explicit cancel action clears one session's booking.
+await spendLimit(ctx, 'session-b', 4)
+assert.equal(schedule.tasks.size, 1)
+state = await request(ctx, 'POST', { action: 'cancel', sessionId: 'session-b' })
+assert.equal(state.json.sessionId, 'session-b')
 assert.deepEqual(state.json.pending, [])
-console.log('ok 13 explicit cancel')
+assert.equal(schedule.tasks.size, 0)
+console.log('ok 14 explicit cancel')
 
-// 14. A restart adopts a surviving task and honors a stored off choice.
-const schedule2 = fakeSchedule()
-await schedule2.create({
+// 15. The stored map is capped at 500 ids, oldest first, when a choice is written.
+const many = {}
+for (let index = 0; index <= SESSION_CAP; index += 1) many[`s-${String(index)}`] = true
+writeFileSync(statePath, `${JSON.stringify({ sessions: many }, null, 2)}\n`)
+const schedule3 = fakeSchedule()
+const ctx3 = fakeContext(schedule3)
+await apply(ctx3, Config({}))
+state = await request(ctx3, 'GET')
+assert.equal(state.json.sessions.length, SESSION_CAP)
+assert.equal(state.json.sessions[0], 's-1')
+state = await request(ctx3, 'POST', { action: 'toggle', sessionId: 's-new' })
+assert.equal(state.json.enabled, true)
+const capped = Object.keys(storedSessions())
+assert.equal(capped.length, SESSION_CAP)
+assert.equal(capped[0], 's-2')
+assert.equal(capped.at(-1), 's-new')
+console.log('ok 15 state capped at 500 sessions, oldest dropped')
+
+// 16. A legacy global `{ enabled: true }` file is ignored, not migrated.
+writeFileSync(statePath, `${JSON.stringify({ enabled: true }, null, 2)}\n`)
+const schedule4 = fakeSchedule()
+const ctx4 = fakeContext(schedule4)
+await apply(ctx4, Config({}))
+state = await request(ctx4, 'GET', undefined, { sessionId: 'legacy-session' })
+assert.equal(state.json.enabled, false)
+assert.deepEqual(state.json.sessions, [])
+console.log('ok 16 legacy global choice ignored')
+
+// 17. A restart adopts a surviving task only for a session that is on; a task
+//     whose session is off is disarmed.
+writeFileSync(statePath, `${JSON.stringify({ sessions: { 'session-on': true } }, null, 2)}\n`)
+const schedule5 = fakeSchedule()
+await schedule5.create({
   title: 'Auto-continue #3 · minimax-api',
   prompt: '<auto_continue>continue</auto_continue>',
   timing: { kind: 'after', after_seconds: 600 },
-  target: { kind: 'session', sessionId: 'session-restart' },
+  target: { kind: 'session', sessionId: 'session-off' },
 })
-const ctx2 = fakeContext(schedule2)
-await apply(ctx2, Config({}))
-state = await request(ctx2, 'GET')
+await schedule5.create({
+  title: 'Auto-continue #2 · minimax-api',
+  prompt: '<auto_continue>continue</auto_continue>',
+  timing: { kind: 'after', after_seconds: 600 },
+  target: { kind: 'session', sessionId: 'session-on' },
+})
+const ctx5 = fakeContext(schedule5)
+await apply(ctx5, Config({}))
+state = await request(ctx5, 'GET', undefined, { sessionId: 'session-on' })
+assert.equal(state.json.enabled, true)
 assert.equal(state.json.pending.length, 1)
-assert.equal(state.json.pending[0].sessionId, 'session-restart')
-assert.equal(state.json.pending[0].attempts, 3)
+assert.equal(state.json.pending[0].sessionId, 'session-on')
+assert.equal(state.json.pending[0].attempts, 2)
 assert.equal(state.json.pending[0].source, 'restored')
-console.log('ok 14 restart adopted:', JSON.stringify(state.json.pending[0]))
+state = await request(ctx5, 'GET', undefined, { sessionId: 'session-off' })
+assert.equal(state.json.enabled, false)
+assert.deepEqual(state.json.pending, [])
+assert.equal(schedule5.tasks.size, 1)
+assert.equal([...schedule5.tasks.values()][0].target.sessionId, 'session-on')
+console.log('ok 17 restart adopted the on session and disarmed the off one')
 
-rmSync(statePath)
-console.log('\nall 14 checks passed')
+writeFileSync(statePath, `${JSON.stringify({ sessions: {} }, null, 2)}\n`)
+console.log('\nall 17 checks passed')

@@ -58,6 +58,12 @@ window.__ModuleLoader__.load({
       },
     }
 
+    /** The state route for one conversation; without an id it is the plain route. */
+    function stateUrl(sessionId) {
+      if (typeof sessionId !== 'string' || sessionId.length === 0) return ENDPOINT
+      return `${ENDPOINT}?sessionId=${encodeURIComponent(sessionId)}`
+    }
+
     /** Fill `{name}` placeholders from one values object. */
     function format(text, values) {
       if (values === undefined) return text
@@ -169,9 +175,11 @@ window.__ModuleLoader__.load({
         React.useEffect(() => {
           let cancelled = false
           let timer
+          // A new conversation starts from its own reading, never the last one's.
+          setState(undefined)
           const load = async () => {
             try {
-              const response = await fetch(ENDPOINT, { headers: { accept: 'application/json' } })
+              const response = await fetch(stateUrl(sessionId), { headers: { accept: 'application/json' } })
               const body = await response.json()
               if (!cancelled) setState(body)
             } catch {
@@ -184,21 +192,22 @@ window.__ModuleLoader__.load({
             cancelled = true
             clearTimeout(timer)
           }
-        }, [])
+        }, [sessionId])
 
         React.useEffect(() => {
           const handle = setInterval(() => setTick(value => value + 1), TICK_MS)
           return () => clearInterval(handle)
         }, [])
 
-        /** Send one control action and adopt the Host's answer. */
+        /** Send one control action for this conversation and adopt the Host's answer. */
         const send = async (request) => {
           setBusy(true)
           try {
+            const named = typeof sessionId === 'string' && sessionId.length > 0
             const response = await fetch(ENDPOINT, {
               method: 'POST',
               headers: { accept: 'application/json', 'content-type': 'application/json' },
-              body: JSON.stringify(request),
+              body: JSON.stringify(named ? { ...request, sessionId } : request),
             })
             setState(await response.json())
           } catch {
@@ -260,7 +269,7 @@ window.__ModuleLoader__.load({
                 title: t('auto.cancel'),
                 'aria-label': t('auto.cancel'),
                 disabled: busy,
-                onClick: () => void send({ action: 'cancel', sessionId }),
+                onClick: () => void send({ action: 'cancel' }),
               },
               '×',
             )

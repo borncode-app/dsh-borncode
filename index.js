@@ -26,12 +26,17 @@ const MAX_DELAY_SECONDS = 7 * 24 * 3600
 /** Longest task title the schedule service accepts. */
 const MAX_TITLE_LENGTH = 120
 /** Which generation of this file a running Host loaded; lives in every state answer. */
-const REVISION = '2026-11-12.6'
+const REVISION = '2026-11-12.7'
+/** Most session choices the state file keeps; the oldest fall off first. */
+const MAX_SESSIONS = 500
 
 export const Config = z.object({
   /** Path the Web GUI reads and posts the toggle to. */
   endpoint: z.string().default('/plugins/auto-continue'),
-  /** Whether a spent limit is continued automatically. Off by default; the Web GUI can change this at runtime. */
+  /**
+   * Default for a conversation with no stored choice. Off by default; each
+   * session can still turn automatic continuation on at runtime.
+   */
   enabled: z.boolean().default(false),
   /** Failure codes that count as a spent usage limit. */
   codes: z.array(z.string()).default([...DEFAULT_CODES]),
@@ -75,8 +80,9 @@ function duration(milliseconds) {
  * A limit failure ends the turn as usual, and this plugin books one durable
  * scheduled message at the moment the limit should be gone. That message resumes
  * the conversation in the same session — through the schedule service, so it
- * survives an app restart and reopens a session the user closed. A composer
- * toggle, persisted in `state.json`, decides whether any of this happens.
+ * survives an app restart and reopens a session the user closed. A per-session
+ * composer toggle, persisted in `state.json`, decides whether that conversation
+ * continues.
  */
 export async function apply(ctx, config) {
   const read = (field, fallback) => {
@@ -94,16 +100,32 @@ export async function apply(ctx, config) {
    * cannot book a continuation for a decision the user already reversed.
    */
   const generation = new Map()
-  /** The runtime on/off choice; `undefined` until `state.json` or a toggle decides. */
-  let chosen
+  /** Session id to an explicit ON choice; a missing entry uses the plugin config. */
+  const sessions = new Map()
   let ready = false
 
+  /** The plugin config's default choice for a session with nothing stored. */
   const configured = () => read('enabled', false) !== false
-  const enabled = () => (chosen === undefined ? configured() : chosen === true)
 
-  /** Persist the runtime choice; a failure must not lose the in-memory decision. */
+  /** Whether automatic continuation is on for one conversation. */
+  const enabledFor = (sessionId) => {
+    if (typeof sessionId === 'string' && sessionId.length > 0 && sessions.has(sessionId)) return true
+    return configured()
+  }
+
+  /** Drop the oldest explicit choices until the map fits the state-file cap. */
+  const trimSessions = () => {
+    while (sessions.size > MAX_SESSIONS) {
+      const oldest = sessions.keys().next()
+      if (oldest.done === true) return
+      sessions.delete(oldest.value)
+    }
+  }
+
+  /** Persist the explicit per-session choices; a failure must not lose the in-memory decision. */
   const persist = async () => {
-    const body = `${JSON.stringify({ enabled: enabled() }, null, 2)}\n`
+    trimSessions()
+    const body = `${JSON.stringify({ sessions: Object.fromEntries(sessions) }, null, 2)}\n`
     const temporary = `${STATE_FILE}.tmp`
     try {
       await writeFile(temporary, body, 'utf8')
@@ -235,11 +257,6 @@ export async function apply(ctx, config) {
     }
   }
 
-  /** Delete every continuation this plugin booked. */
-  const disarmAll = async (why) => {
-    for (const sessionId of [...pending.keys()]) await disarm(sessionId, why)
-  }
-
   /** Book (or move) the one continuation for a session. */
   const arm = async ({ sessionId, provider, failure, capture }) => {
     const service = schedule()
@@ -342,26 +359,37 @@ export async function apply(ctx, config) {
       })
     }
     if (pending.size > 0) logger.info(`auto-continue: restored ${String(pending.size)} pending continuation(s)`)
-    if (!enabled()) await disarmAll('automatic continuation is off')
+    // A restored booking survives only while its own conversation still wants it.
+    for (const sessionId of [...pending.keys()]) {
+      if (!enabledFor(sessionId)) await disarm(sessionId, 'automatic continuation is off for this session')
+    }
   }
 
-  /** Answer one browser poll or toggle with the current state. */
-  const snapshot = () => ({
-    revision: REVISION,
-    enabled: enabled(),
-    supported: schedule() !== undefined,
-    now: Date.now(),
-    pending: [...pending.entries()]
-      .filter(([, entry]) => entry.delivered !== true && Number.isFinite(entry.dueAt))
-      .map(([sessionId, entry]) => ({
-        sessionId,
-        dueAt: entry.dueAt,
-        attempts: entry.attempts,
-        provider: entry.provider,
-        source: entry.source,
-        taskId: entry.taskId ?? null,
-      })),
-  })
+  /** Answer one browser poll or control action with the state of one session. */
+  const snapshot = (sessionId) => {
+    const wanted = typeof sessionId === 'string' && sessionId.length > 0 ? sessionId : null
+    const booked = wanted === null
+      ? []
+      : [...pending.entries()]
+        .filter(([id, entry]) => id === wanted && entry.delivered !== true && Number.isFinite(entry.dueAt))
+        .map(([id, entry]) => ({
+          sessionId: id,
+          dueAt: entry.dueAt,
+          attempts: entry.attempts,
+          provider: entry.provider,
+          source: entry.source,
+          taskId: entry.taskId ?? null,
+        }))
+    return {
+      revision: REVISION,
+      sessionId: wanted,
+      enabled: enabledFor(wanted),
+      supported: schedule() !== undefined,
+      now: Date.now(),
+      pending: booked,
+      sessions: [...sessions.keys()],
+    }
+  }
 
   /** Read one JSON request body, bounded. */
   const readBody = (req) => new Promise((resolve) => {
@@ -385,12 +413,29 @@ export async function apply(ctx, config) {
     req.on('error', () => resolve({}))
   })
 
+  /** The session id named by a GET request's query string, if any. */
+  const querySessionId = (req) => {
+    try {
+      return new URL(String(req?.url ?? ''), 'http://127.0.0.1').searchParams.get('sessionId')
+    } catch {
+      return null
+    }
+  }
+
   await (async () => {
     try {
       const saved = JSON.parse(await readFile(STATE_FILE, 'utf8'))
-      if (typeof saved?.enabled === 'boolean') chosen = saved.enabled
+      // A legacy `{ enabled: boolean }` file names no session, so it is ignored
+      // rather than migrated: every session falls back to the plugin config.
+      const stored = saved?.sessions
+      if (stored !== null && typeof stored === 'object' && !Array.isArray(stored)) {
+        for (const [sessionId, value] of Object.entries(stored)) {
+          if (value === true) sessions.set(sessionId, true)
+        }
+      }
+      trimSessions()
     } catch {
-      /* no saved choice: the plugin config decides */
+      /* no saved choices: the plugin config decides for every session */
     }
     ready = true
   })()
@@ -404,12 +449,15 @@ export async function apply(ctx, config) {
       : (generation.get(String(payload.agent.session?.id)) ?? 0)
     void (async () => {
       try {
-        if (!ready || !enabled() || !isLimit(payload?.failure) || !eligible(payload?.agent)) return
+        if (!ready || !isLimit(payload?.failure) || !eligible(payload?.agent)) return
         if (payload?.signal?.aborted === true) return
+        const sessionId = String(payload.agent.session.id)
+        // Only the conversation that asked for it is continued.
+        if (!enabledFor(sessionId)) return
         // A downstream policy that retries the same step owns the recovery.
         if ((await decision)?.kind === 'retry') return
         await arm({
-          sessionId: String(payload.agent.session.id),
+          sessionId,
           provider: payload.provider,
           failure: payload.failure,
           capture,
@@ -457,7 +505,7 @@ export async function apply(ctx, config) {
       path: endpoint,
       handler: (req, res) => {
         if (req.method === 'GET' || req.method === 'HEAD') {
-          reply(res, 200, snapshot())
+          reply(res, 200, snapshot(querySessionId(req)))
           return
         }
         if (req.method !== 'POST') {
@@ -466,14 +514,18 @@ export async function apply(ctx, config) {
         }
         void (async () => {
           const request = await readBody(req)
+          const sessionId = typeof request.sessionId === 'string' && request.sessionId.length > 0 ? request.sessionId : null
           let probe
-          if (request.action === 'toggle') {
-            chosen = typeof request.enabled === 'boolean' ? request.enabled : !enabled()
+          if (request.action === 'toggle' && sessionId !== null) {
+            const on = typeof request.enabled === 'boolean' ? request.enabled : !enabledFor(sessionId)
+            if (on) sessions.set(sessionId, true)
+            else sessions.delete(sessionId)
             await persist()
-            if (!enabled()) await disarmAll('automatic continuation is off')
-          } else if (request.action === 'cancel' && typeof request.sessionId === 'string') {
-            await disarm(request.sessionId, 'the user cancelled it')
-          } else if (request.action === 'test' && read('debugTest', false) === true && typeof request.sessionId === 'string') {
+            // Only this conversation stops; every other session keeps its choice.
+            if (!enabledFor(sessionId)) await disarm(sessionId, 'automatic continuation is off for this session')
+          } else if (request.action === 'cancel' && sessionId !== null) {
+            await disarm(sessionId, 'the user cancelled it')
+          } else if (request.action === 'test' && read('debugTest', false) === true && sessionId !== null) {
             const service = schedule()
             if (service === undefined) throw new Error('the schedule service is not mounted')
             const seconds = Math.max(MIN_DELIVERY_SECONDS, Math.min(MAX_DELAY_SECONDS, Math.round(Number(request.seconds) || 600)))
@@ -481,11 +533,11 @@ export async function apply(ctx, config) {
               title: `${TASK_TITLE} #0 · probe`,
               prompt: CONTINUE_PROMPT,
               timing: { kind: 'after', after_seconds: seconds },
-              target: { kind: 'session', sessionId: request.sessionId },
-            }, request.sessionId)
+              target: { kind: 'session', sessionId },
+            }, sessionId)
             probe = { taskId: String(task.id), scheduledAt: task.scheduledAt, afterSeconds: seconds }
           }
-          reply(res, 200, { ...snapshot(), ...(probe === undefined ? {} : { probe }) })
+          reply(res, 200, { ...snapshot(sessionId), ...(probe === undefined ? {} : { probe }) })
         })().catch((error) => {
           logger.warn(`auto-continue: control route failed: ${error instanceof Error ? error.message : String(error)}`)
           try {

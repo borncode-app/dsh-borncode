@@ -128,7 +128,8 @@ assert.equal(typeof chip, 'function', 'chip component registered')
 // --- fake Host state and fetch ---------------------------------------------
 const calls = []
 let served = { enabled: true, supported: true, now: Date.now(), pending: [] }
-globalThis.fetch = async (url, options = {}) => {
+/** The fake Host: records each request and answers with the served state. */
+const serve = async (url, options = {}) => {
   calls.push({ url: String(url), options })
   if (options.method === 'POST') {
     const request = JSON.parse(options.body)
@@ -138,15 +139,16 @@ globalThis.fetch = async (url, options = {}) => {
   }
   return { ok: true, json: async () => served }
 }
+globalThis.fetch = serve
 
 /** Mount the chip fresh against one Host state and one locale. */
-async function mount({ localeId, state, sessionId = 'session-1' }) {
+async function mount({ localeId, state, props = { sessionId: 'session-1' } }) {
   mountHooks()
   locale.active = localeId
   served = state
-  let tree = render(chip, { sessionId })
+  let tree = render(chip, props)
   await flush()
-  tree = render(chip, { sessionId })
+  tree = render(chip, props)
   return tree
 }
 const buttonOf = (tree) => find(tree, node => node.props?.['data-auto-continue'] !== undefined)
@@ -198,6 +200,7 @@ await flush()
 tree = render(chip, { sessionId: 'session-1' })
 const toggleCall = calls.filter(call => call.options?.method === 'POST').at(-1)
 assert.equal(JSON.parse(toggleCall.options.body).action, 'toggle')
+assert.equal(JSON.parse(toggleCall.options.body).sessionId, 'session-1')
 assert.match(textOf(tree), /Auto: off/u)
 console.log('ok 4 toggle posted and adopted:', textOf(tree))
 
@@ -240,7 +243,33 @@ tree = await mount({
 assert.match(buttonOf(tree).props.title, /schedule service/u)
 console.log('ok 7 unsupported host explained')
 
-// 8. A failed fetch leaves the chip quiet instead of crashing the dock.
+// 8. Every request names the conversation the chip belongs to.
+tree = await mount({
+  localeId: 'en',
+  state: { enabled: true, supported: true, now: Date.now(), pending: [] },
+  props: { sessionId: 'session-2' },
+})
+const pollCall = calls.filter(call => call.options.method !== 'POST').at(-1)
+assert.equal(pollCall.url, '/plugins/auto-continue?sessionId=session-2')
+await buttonOf(tree).props.onClick()
+await flush()
+const namedToggle = calls.filter(call => call.options?.method === 'POST').at(-1)
+assert.equal(JSON.parse(namedToggle.options.body).sessionId, 'session-2')
+console.log('ok 8 requests name the conversation:', pollCall.url)
+
+// 9. A chip with no session id falls back to the plain route and still renders.
+globalThis.fetch = serve
+tree = await mount({
+  localeId: 'en',
+  state: { enabled: false, supported: true, now: Date.now(), pending: [] },
+  props: {},
+})
+const plainCall = calls.filter(call => call.options.method !== 'POST').at(-1)
+assert.equal(plainCall.url, '/plugins/auto-continue')
+assert.match(textOf(tree), /Auto: off/u)
+console.log('ok 9 no session id falls back to the plain route:', plainCall.url)
+
+// 10. A failed fetch leaves the chip quiet instead of crashing the dock.
 globalThis.fetch = async () => {
   throw new Error('offline')
 }
@@ -248,8 +277,8 @@ mountHooks()
 tree = render(chip, { sessionId: 'session-1' })
 await flush()
 assert.equal(tree, null)
-console.log('ok 8 failed fetch renders nothing')
+console.log('ok 10 failed fetch renders nothing')
 
-console.log('\nall 8 render checks passed')
+console.log('\nall 10 render checks passed')
 // The chip keeps a polling timer alive, exactly as it does in the page.
 process.exit(0)
