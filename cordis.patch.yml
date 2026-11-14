@@ -11,10 +11,10 @@
 # Deselect the eight standalone bundles while this one is selected, or their
 # rows appear twice.
 - insert:
-    # Keeps the per-agent instructions the user writes in Settings → Agent
+    # Keeps the per-agent instructions the user writes in Settings â†’ Agent
     # customization, and contributes them to that agent's own system prompt.
     - id: agent-customizer
-      name: './packages/dsh-agent-customizer/index.js'
+      name: '@local/dsh-agent-customizer'
       config:
         # Path the Web GUI reads and writes the customizations at.
         endpoint: /plugins/agent-customizer
@@ -24,7 +24,7 @@
     # Owns the native agent-desktop binary: it installs it, keeps it current,
     # exposes its commands as first-class tools, and serves its Settings page.
     - id: agent-desktop
-      name: './packages/dsh-agent-desktop/index.js'
+      name: '@local/dsh-agent-desktop'
       config:
         # Path the Web GUI reads and writes the plugin's data at.
         endpoint: /plugins/agent-desktop
@@ -42,7 +42,7 @@
     # Books one durable scheduled message when a model usage limit runs out, so
     # the conversation resumes by itself once the limit resets.
     - id: auto-continue
-      name: './packages/dsh-auto-continue/index.js'
+      name: '@local/dsh-auto-continue'
       config:
         endpoint: /plugins/auto-continue
         enabled: false
@@ -68,7 +68,7 @@
     # Asks the operating system to power the computer down when a root session
     # finishes, using the system's own visible countdown so it can be cancelled.
     - id: auto-shutdown
-      name: './packages/dsh-auto-shutdown/index.js'
+      name: '@local/dsh-auto-shutdown'
       config:
         # Path the Web GUI reads and posts the toggle to.
         endpoint: /plugins/auto-shutdown
@@ -86,7 +86,7 @@
     # Owns the native browser-use package: it installs it into a managed virtual
     # environment, keeps it current, and exposes its browser actions as tools.
     - id: browser-use
-      name: './packages/dsh-browser-use/index.js'
+      name: '@local/dsh-browser-use'
       config:
         # Path the Web GUI reads and writes the plugin's data at.
         endpoint: /plugins/browser-use
@@ -101,10 +101,10 @@
         # Longest one browser command may run, in milliseconds.
         toolTimeoutMs: 120000
 
-    # Keeps the instructions the user writes in Settings → General →
+    # Keeps the instructions the user writes in Settings â†’ General â†’
     # Instructions, and reads them at the top of the system prompt.
     - id: session-instructions
-      name: './packages/dsh-session-instructions/index.js'
+      name: '@local/dsh-session-instructions'
       config:
         # Path the Web GUI reads and writes the instructions at.
         endpoint: /plugins/session-instructions
@@ -114,7 +114,7 @@
     # Imports Claude Code and MiniMax Code conversations as persisted Sessions
     # in the workspace that owns their folder, and records the origin badge.
     - id: session-sync
-      name: './packages/dsh-session-sync/index.js'
+      name: '@local/dsh-session-sync'
       config:
         # Route the Client half reads and posts to.
         endpoint: /plugins/session-sync
@@ -126,7 +126,7 @@
 
     # A right-sidebar chat that answers questions about the current session.
     - id: side-chat
-      name: './packages/dsh-side-chat/index.js'
+      name: '@local/dsh-side-chat'
       config:
         endpoint: /plugins/side-chat
         provider: deepseek-account

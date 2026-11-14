@@ -6,7 +6,32 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    dependencies:
+      '@local/dsh-agent-customizer':
+        specifier: link:./packages/dsh-agent-customizer
+        version: link:packages/dsh-agent-customizer
+      '@local/dsh-agent-desktop':
+        specifier: link:./packages/dsh-agent-desktop
+        version: link:packages/dsh-agent-desktop
+      '@local/dsh-auto-continue':
+        specifier: link:./packages/dsh-auto-continue
+        version: link:packages/dsh-auto-continue
+      '@local/dsh-auto-shutdown':
+        specifier: link:./packages/dsh-auto-shutdown
+        version: link:packages/dsh-auto-shutdown
+      '@local/dsh-browser-use':
+        specifier: link:./packages/dsh-browser-use
+        version: link:packages/dsh-browser-use
+      '@local/dsh-session-instructions':
+        specifier: link:./packages/dsh-session-instructions
+        version: link:packages/dsh-session-instructions
+      '@local/dsh-session-sync':
+        specifier: link:./packages/dsh-session-sync
+        version: link:packages/dsh-session-sync
+      '@local/dsh-side-chat':
+        specifier: link:./packages/dsh-side-chat
+        version: link:packages/dsh-side-chat
 
   packages/dsh-agent-customizer:
     dependencies:

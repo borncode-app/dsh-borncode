@@ -1,7 +1,7 @@
 # dsh-borncode
 
 The BornCode plugins for DeepSeek Harness, in **one repository** and **one
-Plugins entry**. Installing this bundle is enough — it carries its own packages.
+Plugins entry**. Installing this bundle is enough Ã¢â‚¬â€ it carries its own packages.
 
 Each part keeps its own code, its own Config schema, and its own switch. Only
 the repository is shared.
@@ -31,23 +31,24 @@ packages/
 
 | row | package | what it does |
 |---|---|---|
-| `agent-customizer` | `packages/dsh-agent-customizer` | keeps the per-agent instructions and the deployment default model in **Settings → Agent customization** |
+| `agent-customizer` | `packages/dsh-agent-customizer` | keeps the per-agent instructions and the deployment default model in **Settings Ã¢â€ â€™ Agent customization** |
 | `agent-desktop` | `packages/dsh-agent-desktop` | native computer use through the `agent-desktop` CLI, with its own Settings page |
 | `auto-continue` | `packages/dsh-auto-continue` | books a scheduled continuation when a model usage limit runs out, so the conversation resumes by itself |
-| `auto-shutdown` | `packages/dsh-auto-shutdown` | powers the computer down through the operating system's own visible countdown — **ships off** |
+| `auto-shutdown` | `packages/dsh-auto-shutdown` | powers the computer down through the operating system's own visible countdown Ã¢â‚¬â€ **ships off** |
 | `browser-use` | `packages/dsh-browser-use` | native browser control through `browser-use`, with its own Settings page |
-| `session-instructions` | `packages/dsh-session-instructions` | reads the standing instructions in **Settings → General → Instructions** before any work starts |
+| `session-instructions` | `packages/dsh-session-instructions` | reads the standing instructions in **Settings Ã¢â€ â€™ General Ã¢â€ â€™ Instructions** before any work starts |
 | `session-sync` | `packages/dsh-session-sync` | imports Claude Code and MiniMax Code conversations as Sessions, flagged with their origin |
 | `side-chat` | `packages/dsh-side-chat` | a right-sidebar chat that answers questions about the current session |
 
 ## Install
 
 1. Install this bundle.
-2. Nothing else. The bundle carries its packages, and the rows resolve them
-   from beside the patch.
+2. Nothing else. The bundle carries its packages as dependencies, so each
+   row resolves by the package's own name and keeps its title, icon, and
+   Config schema.
 
 If the eight standalone packages are also installed, turn them off in
-**Plugins** — otherwise their rows appear twice.
+**Plugins** Ã¢â‚¬â€ otherwise their rows appear twice.
 
 ## Turn one part off
 
@@ -70,4 +71,4 @@ pnpm -r test          # each package keeps its own suite
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT Ã¢â‚¬â€ see [LICENSE](LICENSE).
