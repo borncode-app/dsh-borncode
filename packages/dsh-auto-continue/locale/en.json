@@ -1,0 +1,9 @@
+{
+  "meta": {
+    "title": "Auto-continue after usage limits",
+    "description": "Resumes an interrupted conversation by itself when a spent model usage limit resets, with an on/off switch under the composer."
+  },
+  "auto.title": "Auto-continue",
+  "auto.on": "Auto: on",
+  "auto.off": "Auto: off"
+}

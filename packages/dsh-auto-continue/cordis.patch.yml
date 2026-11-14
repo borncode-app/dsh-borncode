@@ -1,0 +1,28 @@
+# Inserts the auto-continue Host row. It books one durable scheduled message when
+# a model usage limit runs out, so the conversation resumes by itself once the
+# limit resets. The plugin ships with automatic continuation off; the composer
+# chip stores the runtime choice in the plugin directory's state.json.
+- insert:
+    - id: auto-continue
+      name: '@local/dsh-auto-continue'
+      config:
+        endpoint: /plugins/auto-continue
+        enabled: false
+        # QUOTA and ACCOUNT_QUOTA are permanent as far as the plain retry policy is
+        # concerned; RATE_LIMIT reaches this row only after that policy gave up.
+        codes:
+          - QUOTA
+          - ACCOUNT_QUOTA
+          - RATE_LIMIT
+        minWaitSeconds: 60
+        # A weekly window can be days away; anything farther out is left to the user.
+        maxWaitSeconds: 604800
+        baseWaitSeconds: 300
+        maxBackoffSeconds: 3600
+        maxAttempts: 12
+        # Read the reset time the quota plugin already probed for this provider.
+        quotaEndpoint: /plugins/model-quota
+        probeTimeoutMs: 8000
+        # Off in normal use. `true` lets `POST {"action":"test"}` book a real
+        # continuation now, which is how the booking path is proven end to end.
+        debugTest: false
