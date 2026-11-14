@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "BornCode 套件",
+    "description": "把八个 BornCode 插件合并为一个 Plugins 条目：智能体定制、原生桌面控制、用量限额耗尽后自动续话、会话结束后自动关机、浏览器使用、每次会话都带的长期指令、从 Claude Code 与 MiniMax Code 导入会话，以及右侧栏聊天。各部分仍是独立条目，可以单独关闭而不影响其他部分。",
+    "detail": "docs/DETAIL.zh.md"
+  }
+}

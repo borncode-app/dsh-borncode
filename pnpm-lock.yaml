@@ -6,7 +6,47 @@ settings:
 
 importers:
 
-  .:
+  .: {}
+
+  packages/dsh-agent-customizer:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: ~3.19.0
+        version: 3.19.0
+
+  packages/dsh-agent-desktop:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: ~3.19.0
+        version: 3.19.0
+
+  packages/dsh-auto-continue:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: ~3.19.0
+        version: 3.19.0
+
+  packages/dsh-auto-shutdown:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: ~3.19.0
+        version: 3.19.0
+
+  packages/dsh-browser-use:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: ~3.19.0
+        version: 3.19.0
+
+  packages/dsh-session-instructions:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: ~3.19.0
+        version: 3.19.0
+
+  packages/dsh-session-sync: {}
+
+  packages/dsh-side-chat:
     dependencies:
       '@deepseek-ai/schemastery':
         specifier: ~3.19.0

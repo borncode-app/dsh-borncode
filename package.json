@@ -1,0 +1,41 @@
+{
+  "name": "@local/dsh-borncode",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Installs the BornCode plugins as one Plugins entry: agent customization, native desktop control, auto-continue, auto-shutdown, browser use, session instructions, session sync, and the side chat.",
+  "author": "BornCode (https://github.com/borncode-app)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/borncode-app/dsh-borncode.git"
+  },
+  "homepage": "https://github.com/borncode-app/dsh-borncode#readme",
+  "bugs": {
+    "url": "https://github.com/borncode-app/dsh-borncode/issues"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "dsh-plugin",
+    "borncode",
+    "kit"
+  ],
+  "exports": {
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "cordis.patch.yml",
+    "locale/*.json",
+    "docs",
+    "icon.svg",
+    "README.md",
+    "packages"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "BornCode kit",
+    "description": "Installs the eight BornCode plugins as one Plugins entry: agent customization, native desktop control, auto-continue after a spent usage limit, auto-shutdown, browser use, standing session instructions, session import from Claude Code and MiniMax Code, and a right-sidebar chat. Each part stays its own row, so you can still turn one off without the others.",
+    "detail": "docs/DETAIL.md"
+  }
+}

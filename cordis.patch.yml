@@ -1,0 +1,135 @@
+# One install entry for the eight BornCode plugins.
+#
+# This bundle inserts the rows the eight standalone bundles used to insert,
+# naming the same packages by a path beside this file, so the bundle carries
+# its own packages and one install is enough.
+#
+# Each part keeps its own code, its own Config schema, and its own switch: one
+# crashing row does not take the others down, and a bad field blocks only its
+# own row. Turn a part off in the bundle's detail page.
+#
+# Deselect the eight standalone bundles while this one is selected, or their
+# rows appear twice.
+- insert:
+    # Keeps the per-agent instructions the user writes in Settings → Agent
+    # customization, and contributes them to that agent's own system prompt.
+    - id: agent-customizer
+      name: './packages/dsh-agent-customizer/index.js'
+      config:
+        # Path the Web GUI reads and writes the customizations at.
+        endpoint: /plugins/agent-customizer
+        # Largest instruction text accepted, in characters.
+        maxLength: 20000
+
+    # Owns the native agent-desktop binary: it installs it, keeps it current,
+    # exposes its commands as first-class tools, and serves its Settings page.
+    - id: agent-desktop
+      name: './packages/dsh-agent-desktop/index.js'
+      config:
+        # Path the Web GUI reads and writes the plugin's data at.
+        endpoint: /plugins/agent-desktop
+        # Check GitHub for a newer release every time the Harness starts.
+        autoUpdate: true
+        # Upstream repository the release and its checksums come from.
+        repo: vercel-labs/agent-desktop
+        # Register the desktop_* tools the model calls.
+        registerTools: true
+        # Add the operating guide to the model's system prompt.
+        guideInPrompt: true
+        # Longest one desktop command may run, in milliseconds.
+        toolTimeoutMs: 60000
+
+    # Books one durable scheduled message when a model usage limit runs out, so
+    # the conversation resumes by itself once the limit resets.
+    - id: auto-continue
+      name: './packages/dsh-auto-continue/index.js'
+      config:
+        endpoint: /plugins/auto-continue
+        enabled: false
+        # QUOTA and ACCOUNT_QUOTA are permanent as far as the plain retry policy
+        # is concerned; RATE_LIMIT reaches this row only after that policy gave up.
+        codes:
+          - QUOTA
+          - ACCOUNT_QUOTA
+          - RATE_LIMIT
+        minWaitSeconds: 60
+        # A weekly window can be days away; anything farther out is left to the user.
+        maxWaitSeconds: 604800
+        baseWaitSeconds: 300
+        maxBackoffSeconds: 3600
+        maxAttempts: 12
+        # Read the reset time the quota plugin already probed for this provider.
+        quotaEndpoint: /plugins/model-quota
+        probeTimeoutMs: 8000
+        # Off in normal use. `true` lets `POST {"action":"test"}` book a real
+        # continuation now, which is how the booking path is proven end to end.
+        debugTest: false
+
+    # Asks the operating system to power the computer down when a root session
+    # finishes, using the system's own visible countdown so it can be cancelled.
+    - id: auto-shutdown
+      name: './packages/dsh-auto-shutdown/index.js'
+      config:
+        # Path the Web GUI reads and posts the toggle to.
+        endpoint: /plugins/auto-shutdown
+        # Off by default. The user turns this on deliberately.
+        enabled: false
+        # Countdown the operating system shows before it powers the computer down.
+        delaySeconds: 120
+        # Shortest countdown the plugin arms.
+        minDelaySeconds: 30
+        # Longest countdown the plugin arms.
+        maxDelaySeconds: 3600
+        # The note Windows shows next to its own shutdown countdown dialog.
+        message: 'The Harness session finished, so this computer is shutting down. Run "shutdown /a" to cancel.'
+
+    # Owns the native browser-use package: it installs it into a managed virtual
+    # environment, keeps it current, and exposes its browser actions as tools.
+    - id: browser-use
+      name: './packages/dsh-browser-use/index.js'
+      config:
+        # Path the Web GUI reads and writes the plugin's data at.
+        endpoint: /plugins/browser-use
+        # Check PyPI for a newer release every time the Harness starts.
+        autoUpdate: true
+        # Package the plugin installs and keeps current.
+        package: browser-use
+        # Register the browser_* tools the model calls.
+        registerTools: true
+        # Add the operating guide to the model's system prompt.
+        guideInPrompt: true
+        # Longest one browser command may run, in milliseconds.
+        toolTimeoutMs: 120000
+
+    # Keeps the instructions the user writes in Settings → General →
+    # Instructions, and reads them at the top of the system prompt.
+    - id: session-instructions
+      name: './packages/dsh-session-instructions/index.js'
+      config:
+        # Path the Web GUI reads and writes the instructions at.
+        endpoint: /plugins/session-instructions
+        # Largest instruction text accepted, in characters.
+        maxLength: 20000
+
+    # Imports Claude Code and MiniMax Code conversations as persisted Sessions
+    # in the workspace that owns their folder, and records the origin badge.
+    - id: session-sync
+      name: './packages/dsh-session-sync/index.js'
+      config:
+        # Route the Client half reads and posts to.
+        endpoint: /plugins/session-sync
+        # Scan at startup and then on a slow interval.
+        autoSync: true
+        intervalMinutes: 15
+        # Per-message character budget; longer bodies are truncated visibly.
+        maxTextChars: 20000
+
+    # A right-sidebar chat that answers questions about the current session.
+    - id: side-chat
+      name: './packages/dsh-side-chat/index.js'
+      config:
+        endpoint: /plugins/side-chat
+        provider: deepseek-account
+        model: deepseek-flash
+        maxChars: 48000
+        maxMessageChars: 4000
