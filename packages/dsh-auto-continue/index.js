@@ -173,7 +173,7 @@ export async function apply(ctx, config) {
    * "reset unknown". The plugin reports the reset as a duration reading; the
    * exact millisecond field is used when that build exposes it.
    */
-  const quotaResetMs = async (provider) => {
+  const quotaResetMs = async (provider, model) => {
     const route = read('quotaEndpoint', '/plugins/model-quota')
     if (typeof route !== 'string' || route.length === 0 || typeof provider !== 'string') return undefined
     let url
@@ -183,6 +183,9 @@ export async function apply(ctx, config) {
       return undefined
     }
     url.searchParams.set('provider', provider)
+    // A gateway route such as Our Free Model serves several channels, and the
+    // quota plugin needs the model to know which one this failure belongs to.
+    if (typeof model === 'string' && model.length > 0) url.searchParams.set('model', model)
     let response
     try {
       response = await fetch(url, {
@@ -215,7 +218,7 @@ export async function apply(ctx, config) {
   }
 
   /** The wait before the next continuation attempt, and why it is that long. */
-  const waitSeconds = async (provider, failure, attempts) => {
+  const waitSeconds = async (provider, failure, attempts, model) => {
     const floor = Math.max(MIN_DELIVERY_SECONDS, read('minWaitSeconds', MIN_DELIVERY_SECONDS))
     const ceiling = Math.max(floor, Math.min(MAX_DELAY_SECONDS, read('maxWaitSeconds', MAX_DELAY_SECONDS)))
     const fit = (seconds) => {
@@ -229,7 +232,7 @@ export async function apply(ctx, config) {
       if (seconds !== undefined) return { seconds, source: 'provider' }
     }
 
-    const resetMs = await quotaResetMs(provider)
+    const resetMs = await quotaResetMs(provider, model)
     if (resetMs !== undefined) {
       const seconds = fit(resetMs / 1000)
       if (seconds !== undefined) return { seconds, source: 'quota' }
@@ -258,7 +261,7 @@ export async function apply(ctx, config) {
   }
 
   /** Book (or move) the one continuation for a session. */
-  const arm = async ({ sessionId, provider, failure, capture }) => {
+  const arm = async ({ sessionId, provider, model, failure, capture }) => {
     const service = schedule()
     if (service === undefined) {
       logger.warn('auto-continue: the schedule service is not mounted; cannot continue after a limit')
@@ -272,7 +275,7 @@ export async function apply(ctx, config) {
       logger.info(`auto-continue: ${String(sessionId)} reached ${String(attempts - 1)} attempts; staying stopped`)
       return
     }
-    const wait = await waitSeconds(provider, failure, attempts)
+    const wait = await waitSeconds(provider, failure, attempts, model)
     if (current() !== capture) return
     const dueAt = Date.now() + wait.seconds * 1000
     const title = `${TASK_TITLE} #${String(attempts)} · ${String(provider)}`.slice(0, MAX_TITLE_LENGTH)
@@ -459,6 +462,7 @@ export async function apply(ctx, config) {
         await arm({
           sessionId,
           provider: payload.provider,
+          model: typeof payload.model === 'string' ? payload.model : undefined,
           failure: payload.failure,
           capture,
         })

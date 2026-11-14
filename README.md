@@ -67,7 +67,12 @@ pnpm -r test          # each package keeps its own suite
 - `auto-continue` and `auto-shutdown` ship off. Both act on the machine, so
   the user turns them on deliberately.
 - `auto-continue` reads the reset time from `/plugins/model-quota`, so it needs
-  a quota plugin to answer for the model in use.
+  a quota plugin to answer for the model in use. It passes the failing model
+  along with the provider, so a gateway route such as **Our Free Model**
+  (provider `our-free-model`, models `claude/...` or `minimax/...`) resolves to
+  the right channel's reset time. With the MiniMax kit's `model-quota` that
+  reading comes from Our Free Model's gateway; without it the wait falls back to
+  a growing backoff.
 
 ## License
 
