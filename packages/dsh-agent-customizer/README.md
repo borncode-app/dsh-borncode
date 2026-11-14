@@ -3,7 +3,7 @@
   <h1>dsh-agent-customizer</h1>
   <p><b>Per-agent instructions and a deployment default model, editable from the Web GUI.</b></p>
   <p>
-    <a href="https://github.com/borncode-app/dsh-agent-customizer/releases"><img alt="release" src="https://img.shields.io/github/v/release/borncode-app/dsh-agent-customizer?style=flat-square&color=6C4BF6"></a>
+    <a href="https://github.com/borncode-app/dsh-borncode/releases"><img alt="release" src="https://img.shields.io/github/v/tag/borncode-app/dsh-borncode/dsh-agent-customizer?style=flat-square&color=6C4BF6"></a>
     <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-3DA639?style=flat-square"></a>
     <img alt="plugin" src="https://img.shields.io/badge/DeepSeek%20Harness-plugin-6C4BF6?style=flat-square">
     <img alt="platform" src="https://img.shields.io/badge/platform-win%20%7C%20mac%20%7C%20linux-555?style=flat-square">
@@ -43,7 +43,7 @@ Nothing is baked into the bundle. The instructions live in `state.json` next to 
 Clone the repo anywhere stable, then install it as a bundle into your profile:
 
 ```bash
-git clone https://github.com/borncode-app/dsh-agent-customizer.git dsh-agent-customizer
+git clone https://github.com/borncode-app/dsh-borncode.git dsh-borncode
 ```
 
 In DSH, open **Plugins** and install the bundle from that directory, or ask the agent:

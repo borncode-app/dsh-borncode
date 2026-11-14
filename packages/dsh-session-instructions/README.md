@@ -3,7 +3,7 @@
   <h1>dsh-session-instructions</h1>
   <p><b>Standing instructions that travel with every request, so nothing you said once gets forgotten.</b></p>
   <p>
-    <a href="https://github.com/borncode-app/dsh-session-instructions/releases"><img alt="release" src="https://img.shields.io/github/v/release/borncode-app/dsh-session-instructions?style=flat-square&color=6C4BF6"></a>
+    <a href="https://github.com/borncode-app/dsh-borncode/releases"><img alt="release" src="https://img.shields.io/github/v/tag/borncode-app/dsh-borncode/dsh-session-instructions?style=flat-square&color=6C4BF6"></a>
     <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-3DA639?style=flat-square"></a>
     <img alt="plugin" src="https://img.shields.io/badge/DeepSeek%20Harness-plugin-6C4BF6?style=flat-square">
     <img alt="scope" src="https://img.shields.io/badge/scope-every%20turn-8957e5?style=flat-square"></a>
@@ -42,7 +42,7 @@ it is read at the **top of the system prompt**, before any work starts, on every
 ## Install
 
 ```bash
-git clone https://github.com/borncode-app/dsh-session-instructions.git dsh-session-instructions
+git clone https://github.com/borncode-app/dsh-borncode.git dsh-borncode
 ```
 
 Then:

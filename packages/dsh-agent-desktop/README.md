@@ -3,7 +3,7 @@
   <h1>dsh-agent-desktop</h1>
   <p><b>Native computer use for DeepSeek Harness — the agent sees and drives the real desktop.</b></p>
   <p>
-    <a href="https://github.com/borncode-app/dsh-agent-desktop/releases"><img alt="release" src="https://img.shields.io/github/v/release/borncode-app/dsh-agent-desktop?style=flat-square&color=6C4BF6"></a>
+    <a href="https://github.com/borncode-app/dsh-borncode/releases"><img alt="release" src="https://img.shields.io/github/v/tag/borncode-app/dsh-borncode/dsh-agent-desktop?style=flat-square&color=6C4BF6"></a>
     <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-3DA639?style=flat-square"></a>
     <img alt="plugin" src="https://img.shields.io/badge/DeepSeek%20Harness-plugin-6C4BF6?style=flat-square">
     <img alt="powered by" src="https://img.shields.io/badge/binaries-agent--desktop-000?style=flat-square">
@@ -50,7 +50,7 @@ Result: "open the calculator and type 42" works without a terminal round trip.
 ## Install
 
 ```bash
-git clone https://github.com/borncode-app/dsh-agent-desktop.git dsh-agent-desktop
+git clone https://github.com/borncode-app/dsh-borncode.git dsh-borncode
 ```
 
 Then, in DSH: **Plugins** → install the bundle from that directory, or:

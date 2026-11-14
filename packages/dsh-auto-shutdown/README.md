@@ -3,7 +3,7 @@
   <h1>dsh-auto-shutdown</h1>
   <p><b>Powers the computer down after the work finishes — with the operating system's own cancelable countdown.</b></p>
   <p>
-    <a href="https://github.com/borncode-app/dsh-auto-shutdown/releases"><img alt="release" src="https://img.shields.io/github/v/release/borncode-app/dsh-auto-shutdown?style=flat-square&color=6C4BF6"></a>
+    <a href="https://github.com/borncode-app/dsh-borncode/releases"><img alt="release" src="https://img.shields.io/github/v/tag/borncode-app/dsh-borncode/dsh-auto-shutdown?style=flat-square&color=6C4BF6"></a>
     <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-3DA639?style=flat-square"></a>
     <img alt="plugin" src="https://img.shields.io/badge/DeepSeek%20Harness-plugin-6C4BF6?style=flat-square">
     <img alt="default" src="https://img.shields.io/badge/default-off-8957e5?style=flat-square">
@@ -40,7 +40,7 @@ It ships **off**, because a deployment should never start powering down computer
 ## Install
 
 ```bash
-git clone https://github.com/borncode-app/dsh-auto-shutdown.git dsh-auto-shutdown
+git clone https://github.com/borncode-app/dsh-borncode.git dsh-borncode
 ```
 
 Then in DSH: **Plugins** → install the bundle from that directory, or:

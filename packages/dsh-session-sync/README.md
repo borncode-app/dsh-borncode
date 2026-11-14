@@ -3,7 +3,7 @@
   <h1>dsh-session-sync</h1>
   <p><b>Brings your Claude Code and MiniMax Code conversations into DeepSeek Harness — in the right workspace.</b></p>
   <p>
-    <a href="https://github.com/borncode-app/dsh-session-sync/releases"><img alt="release" src="https://img.shields.io/github/v/release/borncode-app/dsh-session-sync?style=flat-square&color=6C4BF6"></a>
+    <a href="https://github.com/borncode-app/dsh-borncode/releases"><img alt="release" src="https://img.shields.io/github/v/tag/borncode-app/dsh-borncode/dsh-session-sync?style=flat-square&color=6C4BF6"></a>
     <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-3DA639?style=flat-square"></a>
     <img alt="plugin" src="https://img.shields.io/badge/DeepSeek%20Harness-plugin-6C4BF6?style=flat-square">
     <img alt="sources" src="https://img.shields.io/badge/reads-Claude%20Code%20%2B%20MiniMax%20Code-8957e5?style=flat-square">
@@ -105,7 +105,7 @@ The remaining MiniMax sessions name no folder in their prompt, so they stay in t
 ## Install
 
 ```bash
-git clone https://github.com/borncode-app/dsh-session-sync.git dsh-session-sync
+git clone https://github.com/borncode-app/dsh-borncode.git dsh-borncode
 ```
 
 Then in DSH: **Plugins** → install the bundle from that directory, or:

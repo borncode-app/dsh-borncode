@@ -3,7 +3,7 @@
   <h1>dsh-side-chat</h1>
   <p><b>Ask about the conversation you are in — in a chat that never edits it.</b></p>
   <p>
-    <a href="https://github.com/borncode-app/dsh-side-chat/releases"><img alt="release" src="https://img.shields.io/github/v/release/borncode-app/dsh-side-chat?style=flat-square&color=6C4BF6"></a>
+    <a href="https://github.com/borncode-app/dsh-borncode/releases"><img alt="release" src="https://img.shields.io/github/v/tag/borncode-app/dsh-borncode/dsh-side-chat?style=flat-square&color=6C4BF6"></a>
     <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-3DA639?style=flat-square"></a>
     <img alt="plugin" src="https://img.shields.io/badge/DeepSeek%20Harness-plugin-6C4BF6?style=flat-square">
     <img alt="pane" src="https://img.shields.io/badge/pane-right%20sidebar-8957e5?style=flat-square">
@@ -42,7 +42,7 @@ answers in the right sidebar, and writes nothing back into the main conversation
 ## Install
 
 ```bash
-git clone https://github.com/borncode-app/dsh-side-chat.git dsh-side-chat
+git clone https://github.com/borncode-app/dsh-borncode.git dsh-borncode
 ```
 
 Then:

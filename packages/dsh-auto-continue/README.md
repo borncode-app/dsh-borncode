@@ -3,7 +3,7 @@
   <h1>dsh-auto-continue</h1>
   <p><b>Your conversation resumes by itself once a spent usage limit resets.</b></p>
   <p>
-    <a href="https://github.com/borncode-app/dsh-auto-continue/releases"><img alt="release" src="https://img.shields.io/github/v/release/borncode-app/dsh-auto-continue?style=flat-square&color=6C4BF6"></a>
+    <a href="https://github.com/borncode-app/dsh-borncode/releases"><img alt="release" src="https://img.shields.io/github/v/tag/borncode-app/dsh-borncode/dsh-auto-continue?style=flat-square&color=6C4BF6"></a>
     <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-3DA639?style=flat-square"></a>
     <img alt="plugin" src="https://img.shields.io/badge/DeepSeek%20Harness-plugin-6C4BF6?style=flat-square">
     <img alt="default" src="https://img.shields.io/badge/default-off-8957e5?style=flat-square">
@@ -39,12 +39,12 @@ It ships **off**. Turning it on for a deployment is a deliberate choice, and the
 |---|---|
 | DeepSeek Harness | 0.2.x (Web GUI) |
 | Runtime | Node 24, supplied by the Harness runtime |
-| Optional | [`dsh-model-quota`](https://github.com/borncode-app/dsh-model-quota) — supplies the real reset time |
+| Optional | [`dsh-model-quota`](https://github.com/borncode-app/dsh-minimax-kit/packages/dsh-model-quota) — supplies the real reset time |
 
 ## Install
 
 ```bash
-git clone https://github.com/borncode-app/dsh-auto-continue.git dsh-auto-continue
+git clone https://github.com/borncode-app/dsh-borncode.git dsh-borncode
 ```
 
 Then in DSH: **Plugins** → install the bundle from that directory, or:

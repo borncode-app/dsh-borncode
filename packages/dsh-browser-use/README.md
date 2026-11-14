@@ -3,7 +3,7 @@
   <h1>dsh-browser-use</h1>
   <p><b>Native browser control for DeepSeek Harness, through <a href="https://github.com/browser-use/browser-use">browser-use</a>.</b></p>
   <p>
-    <a href="https://github.com/borncode-app/dsh-browser-use/releases"><img alt="release" src="https://img.shields.io/github/v/release/borncode-app/dsh-browser-use?style=flat-square&color=6C4BF6"></a>
+    <a href="https://github.com/borncode-app/dsh-borncode/releases"><img alt="release" src="https://img.shields.io/github/v/tag/borncode-app/dsh-borncode/dsh-browser-use?style=flat-square&color=6C4BF6"></a>
     <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-3DA639?style=flat-square"></a>
     <img alt="plugin" src="https://img.shields.io/badge/DeepSeek%20Harness-plugin-6C4BF6?style=flat-square">
     <img alt="package" src="https://img.shields.io/pypi/v/browser-use?style=flat-square&color=3775A9">
@@ -47,7 +47,7 @@ Two browsers come out of it:
 ## Install
 
 ```bash
-git clone https://github.com/borncode-app/dsh-browser-use.git dsh-browser-use
+git clone https://github.com/borncode-app/dsh-borncode.git dsh-borncode
 ```
 
 Then in DSH: **Plugins** → install the bundle from that directory, or:
