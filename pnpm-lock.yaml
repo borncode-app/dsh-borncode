@@ -23,6 +23,9 @@ importers:
       '@local/dsh-browser-use':
         specifier: link:./packages/dsh-browser-use
         version: link:packages/dsh-browser-use
+      '@local/dsh-model-workspace':
+        specifier: link:./packages/dsh-model-workspace
+        version: link:packages/dsh-model-workspace
       '@local/dsh-session-instructions':
         specifier: link:./packages/dsh-session-instructions
         version: link:packages/dsh-session-instructions
@@ -62,6 +65,8 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: ~3.19.0
         version: 3.19.0
+
+  packages/dsh-model-workspace: {}
 
   packages/dsh-session-instructions:
     dependencies:

@@ -111,6 +111,12 @@
         # Largest instruction text accepted, in characters.
         maxLength: 20000
 
+    # One row in the sidebar's More menu that opens Our Free Model's Model
+    # workspace (magpie) page. The Host half is inert: the shortcut only
+    # navigates, so there is nothing to configure.
+    - id: model-workspace
+      name: '@local/dsh-model-workspace'
+
     # Imports Claude Code and MiniMax Code conversations as persisted Sessions
     # in the workspace that owns their folder, and records the origin badge.
     - id: session-sync
