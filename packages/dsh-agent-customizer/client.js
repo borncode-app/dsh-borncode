@@ -10,11 +10,8 @@ window.__ModuleLoader__.load({
     /** Visible text. Kept beside the exported locale resources for the same keys. */
     const dictionaries = {      en: {
         'agent.nav': 'Agent customization',
-        'agent.intro': 'Tune the agents this profile runs. The instructions belong to one agent and travel with it; the default model is the model every freshly created agent starts on.',
+        'agent.intro': 'Choose the model every freshly created agent starts on. The standing instructions that apply to every agent live in Settings → General → Instructions.',
         'agent.agent': 'Agent',
-        'agent.instructions': 'Instructions',
-        'agent.instructions.hint': 'Read before any work starts. Write here what this agent must always do — it joins the agent’s own prompt, behind its persona.',
-        'agent.instructions.placeholder': 'For example:\n- Always answer in Thai.\n- Run the smoke test before reporting done.\n- Keep the report in workspace/report.md.',
         'agent.save': 'Save',
         'agent.saving': 'Saving…',
         'agent.clear': 'Clear',
@@ -38,11 +35,8 @@ window.__ModuleLoader__.load({
       },
       th: {
         'agent.nav': 'ปรับแต่งเอเจนต์',
-        'agent.intro': 'ปรับแต่งเอเจนต์ที่โปรไฟล์นี้ใช้ คำสั่งงานจะผูกกับเอเจนต์แต่ละตัวและติดตัวไปด้วย ส่วนโมเดลเริ่มต้นคือโมเดลที่เอเจนต์ที่สร้างใหม่ทุกตัวจะเริ่มใช้',
+        'agent.intro': 'เลือกโมเดลที่เอเจนต์ที่สร้างใหม่ทุกตัวจะเริ่มใช้ ส่วนคำสั่งงานที่ใช้กับทุกเอเจนต์อยู่ที่ การตั้งค่า → ทั่วไป → คำสั่ง',
         'agent.agent': 'เอเจนต์',
-        'agent.instructions': 'คำสั่งงาน',
-        'agent.instructions.hint': 'อ่านก่อนเริ่มงานทุกครั้ง เขียนสิ่งที่เอเจนต์นี้ต้องทำเสมอ — ข้อความจะถูกแทรกในพรอมต์ของเอเจนต์เอง ต่อจาก persona',
-        'agent.instructions.placeholder': 'ตัวอย่าง:\n- ตอบเป็นภาษาไทยเสมอ\n- ต้องรัน smoke test ก่อนรายงานว่าเสร็จแล้ว\n- รายงานอยู่ที่ workspace/report.md',
         'agent.save': 'บันทึก',
         'agent.saving': 'กำลังบันทึก…',
         'agent.clear': 'ล้าง',
@@ -66,11 +60,8 @@ window.__ModuleLoader__.load({
       },
       zh: {
         'agent.nav': '智能体定制',
-        'agent.intro': '调整此配置使用的智能体。指令属于某一个智能体并随其生效；默认模型是每个新建智能体启动时使用的模型。',
+        'agent.intro': '选择每个新建智能体启动时使用的模型。适用于所有智能体的常驻指令位于 设置 → 通用 → 指令。',
         'agent.agent': '智能体',
-        'agent.instructions': '指令',
-        'agent.instructions.hint': '开始任何工作前先阅读。写下这个智能体必须始终做的事——它会加入该智能体自己的提示词，位于其 persona 之后。',
-        'agent.instructions.placeholder': '例如：\n- 始终用中文回答。\n- 报告完成前先跑冒烟测试。\n- 报告放在 workspace/report.md。',
         'agent.save': '保存',
         'agent.saving': '保存中…',
         'agent.clear': '清除',
@@ -172,9 +163,6 @@ window.__ModuleLoader__.load({
         const [state, setState] = React.useState(null)
         const [error, setError] = React.useState(null)
         const [agent, setAgent] = React.useState('')
-        const [text, setText] = React.useState('')
-        const [status, setStatus] = React.useState('idle')
-        const [busy, setBusy] = React.useState(false)
         const [provider, setProvider] = React.useState('')
         const [model, setModel] = React.useState('')
         const [effort, setEffort] = React.useState('')
@@ -210,13 +198,6 @@ window.__ModuleLoader__.load({
           void load()
         }, [load])
 
-        // Adopt the stored instructions whenever the selected agent changes.
-        React.useEffect(() => {
-          const stored = state?.agents?.[agent]
-          setText(typeof stored === 'string' ? stored : '')
-          setStatus('idle')
-        }, [agent, state])
-
         const presets = Array.isArray(state?.presets) ? state.presets : []
         const providers = Array.isArray(state?.providers) ? state.providers : []
         const selectedProvider = providers.find((group) => group.id === provider)
@@ -238,39 +219,6 @@ window.__ModuleLoader__.load({
           if (!response.ok) throw new Error(answer?.error ?? `status ${response.status}`)
           setState(answer)
           return answer
-        }
-
-        /** Store the instructions of the selected agent. */
-        const save = async () => {
-          if (busy || agent.length === 0) return
-          setBusy(true)
-          setStatus('saving')
-          try {
-            const answer = await send({ action: 'save-instructions', agent, instructions: text })
-            const stored = answer?.agents?.[agent]
-            setText(typeof stored === 'string' ? stored : '')
-            setStatus('saved')
-          } catch {
-            setStatus('error')
-          } finally {
-            setBusy(false)
-          }
-        }
-
-        /** Remove the instructions of the selected agent. */
-        const clear = async () => {
-          if (busy || agent.length === 0) return
-          setBusy(true)
-          setStatus('saving')
-          try {
-            await send({ action: 'clear-instructions', agent })
-            setText('')
-            setStatus('cleared')
-          } catch {
-            setStatus('error')
-          } finally {
-            setBusy(false)
-          }
         }
 
         /** Store the model every freshly created agent starts on. */
@@ -298,32 +246,6 @@ window.__ModuleLoader__.load({
           } finally {
             setModelBusy(false)
           }
-        }
-
-        /** Ctrl+Enter (Cmd+Enter on macOS) saves without leaving the keyboard. */
-        const onKeyDown = (event) => {
-          if (event.key !== 'Enter' || !(event.ctrlKey || event.metaKey)) return
-          event.preventDefault()
-          void save()
-        }
-
-        let statusText
-        let statusClass = 'dshac_status'
-        if (status === 'saving') {
-          statusText = t('agent.saving')
-        } else if (status === 'saved') {
-          statusText = t('agent.saved')
-          statusClass = 'dshac_status dshac_statusOk'
-        } else if (status === 'cleared') {
-          statusText = t('agent.cleared')
-          statusClass = 'dshac_status dshac_statusOk'
-        } else if (status === 'error') {
-          statusText = t('agent.error')
-          statusClass = 'dshac_status dshac_statusError'
-        } else if (text.trim().length === 0) {
-          statusText = t('agent.empty')
-        } else {
-          statusText = t('agent.instructions.hint')
         }
 
         let modelStatusText
@@ -376,38 +298,6 @@ window.__ModuleLoader__.load({
           selected?.broken
             ? React.createElement('p', { className: 'dshac_warning', role: 'alert' }, `${t('agent.broken')} ${selected.broken}`)
             : null,
-          React.createElement(
-            Field,
-            { label: t('agent.instructions'), hint: t('agent.instructions.hint') },
-            React.createElement('textarea', {
-              className: 'dshac_textarea',
-              value: text,
-              spellCheck: false,
-              placeholder: t('agent.instructions.placeholder'),
-              'aria-label': t('agent.instructions'),
-              disabled: agent.length === 0,
-              onChange: (event) => {
-                setText(event.target.value)
-                if (status === 'saved' || status === 'cleared' || status === 'error') setStatus('idle')
-              },
-              onKeyDown,
-            }),
-          ),
-          React.createElement(
-            'div',
-            { className: 'dshac_row' },
-            React.createElement(
-              'button',
-              { type: 'button', className: 'dshac_button', disabled: busy || agent.length === 0, onClick: () => void save() },
-              t('agent.save'),
-            ),
-            React.createElement(
-              'button',
-              { type: 'button', className: 'dshac_button', disabled: busy || agent.length === 0, onClick: () => void clear() },
-              t('agent.clear'),
-            ),
-            React.createElement('span', { className: statusClass, role: 'status' }, statusText),
-          ),
           React.createElement('hr', { className: 'dshac_separator' }),
           React.createElement(
             Field,

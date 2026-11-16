@@ -24,6 +24,9 @@ it is read at the **top of the system prompt**, before any work starts, on every
 ## Features
 
 - **Always first** — the text is placed at the top of the system prompt, not appended after a long conversation.
+- **One set, every agent** — the instructions ride the profile-wide prompt *and* each live agent's own scope, so
+  the main agent, every Agent preset, and every subagent read the same text. You write it once; you do not
+  repeat it per agent.
 - **Editable without code changes** — the GUI writes it; no patch file, no restart to change the wording.
 - **Persisted, not ephemeral** — kept in the plugin's `state.json`, so upgrades and `git pull` leave it alone.
 - **Bounded** — `maxLength` (20 000 characters by default) rejects a runaway paste before it costs tokens on

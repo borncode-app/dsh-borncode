@@ -95,3 +95,4 @@ check('the Host serves the restored text', finalRead.body?.instructions === orig
 
 console.log(failures === 0 ? '\nsmoke test passed' : `\nsmoke test failed: ${String(failures)} check(s)`)
 process.exit(failures === 0 ? 0 : 1)
+

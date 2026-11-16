@@ -4,12 +4,10 @@ import { fileURLToPath } from 'node:url'
 
 /** File that keeps the per-agent customizations across restarts. */
 const STATE_FILE = fileURLToPath(new URL('./state.json', import.meta.url))
-/** Name of the prompt section this plugin owns inside an agent scope. */
-const SECTION_NAME = 'agent-customizer:instructions'
 /** Largest instruction text the plugin stores when the row does not say otherwise. */
 const MAX_LENGTH = 20000
 /** Which generation of this file a running Host loaded; lives in every state answer. */
-const REVISION = '2026-11-12.3'
+const REVISION = '2026-11-12.4'
 
 export const Config = z.object({
   /** Path the Web GUI reads and writes the customizations at. */
@@ -37,38 +35,32 @@ function setting(config, field, fallback) {
 }
 
 /**
- * Keep the per-agent customizations, apply the instructions to the agent that
- * owns them, and expose the default model to the Web GUI.
+ * Keep the per-agent customizations, and expose the default model to the Web GUI.
  *
- * The user picks an agent (one Agent preset) in Settings → Agent customization,
- * writes the Instructions that agent must read before it starts work, and
- * chooses the model freshly created agents start on. The instructions live
- * beside this plugin and are contributed as a prompt section inside that
- * agent's own scope, so they travel with the agent and leave when it does.
+ * The user picks a model in Settings → Agent customization and every freshly
+ * created agent starts on it. The standing instructions the user writes once
+ * belong to `dsh-session-instructions`, which contributes them to every agent
+ * of this profile; this plugin owns the deployment default model only, so the
+ * two never disagree about what the user asked for.
  */
 export async function apply(ctx, config) {
   const logger = ctx.logger
   const endpoint = String(setting(config, 'endpoint', '/plugins/agent-customizer'))
   const maxLength = Math.max(0, Math.floor(Number(setting(config, 'maxLength', MAX_LENGTH)) || 0))
 
-  /** The custom instructions, keyed by Agent preset id. */
-  const instructions = new Map()
   /** When the customizations were last written. */
   let updatedAt = 0
-  /** Live agents that received the instructions, keyed by agent id. */
-  const applied = new Map()
 
   /**
    * Store the customizations next to the plugin.
    *
    * The write is atomic, so a crash never leaves a half-written file behind.
    *
-   * @param {Map<string, string>} next - the custom instructions to store.
    * @param {number} stamp - the timestamp to record with them.
    * @returns {Promise<boolean>} whether the file was written.
    */
-  const persist = async (next, stamp) => {
-    const body = `${JSON.stringify({ agents: Object.fromEntries(next), updatedAt: stamp }, null, 2)}\n`
+  const persist = async (stamp) => {
+    const body = `${JSON.stringify({ updatedAt: stamp }, null, 2)}\n`
     const temporary = `${STATE_FILE}.tmp`
     try {
       await writeFile(temporary, body, 'utf8')
@@ -104,38 +96,9 @@ export async function apply(ctx, config) {
 
   try {
     const saved = JSON.parse(await readFile(STATE_FILE, 'utf8'))
-    const agents = saved?.agents
-    if (agents !== null && typeof agents === 'object') {
-      for (const [id, text] of Object.entries(agents)) {
-        if (typeof text === 'string' && text.trim().length > 0) instructions.set(id, text)
-      }
-    }
     if (typeof saved?.updatedAt === 'number') updatedAt = saved.updatedAt
   } catch {
     /* nothing stored yet: the page starts empty */
-  }
-
-  /** The instructions one agent reads, or an empty string when it has none. */
-  const instructionsOf = (presetId) => instructions.get(presetId) ?? ''
-
-  /**
-   * The section text an agent renders for its own instructions.
-   *
-   * An agent with no instructions contributes nothing at all: the section
-   * renders as empty text and the prompt assembler drops it.
-   *
-   * @param {string} presetId - the Agent preset the section belongs to.
-   * @returns {string} the section text, or an empty string when nothing is set.
-   */
-  const sectionText = (presetId) => {
-    const text = instructionsOf(presetId).trim()
-    if (text.length === 0) return ''
-    return [
-      '## Agent instructions',
-      "These are the user's standing instructions for this agent, written in Settings → Agent customization. Read them before starting any work. Every item is a deliverable the user expects: do not forget one of them, and confirm each one is done before reporting the work as finished.",
-      '',
-      text,
-    ].join('\n')
   }
 
   /**
@@ -232,76 +195,12 @@ export async function apply(ctx, config) {
     return {
       revision: REVISION,
       presets: await readPresets(registry),
-      agents: Object.fromEntries(instructions),
       defaultModel,
       providers: await readProviders(llm),
       maxLength,
       updatedAt,
-      applied: [...applied.entries()].map(([id, record]) => ({ id, agent: record.agent })),
     }
   }
-
-  /**
-   * Apply the instructions of the agent an event belongs to.
-   *
-   * The section is registered on the agent's own scope, so it reaches that
-   * agent alone and disappears with it.
-   *
-   * @param {object} agent - the live agent the event carries.
-   * @returns {void}
-   */
-  const applyTo = (agent) => {
-    const registry = ctx.get('agentPresets')
-    const prompt = ctx.get('systemPrompt')
-    if (registry === undefined || prompt === undefined) return
-    let presetId
-    try {
-      presetId = registry.composedPreset?.(agent.ctx) ?? agent.session?.header?.agentPreset ?? null
-    } catch {
-      presetId = null
-    }
-    if (typeof presetId !== 'string' || presetId.length === 0) return
-    const dispose = agent.ctx.systemPrompt.section({
-      name: SECTION_NAME,
-      // Right behind the persona: the agent's identity, then the user's own
-      // instructions for that agent.
-      order: prompt.getSectionOrder('DEPLOYMENT_PERSONA_PREFIX') + 1,
-      text: () => sectionText(presetId),
-      // The user's text is data, never a `{{variable}}` reference.
-      interpolate: false,
-    })
-    agent.ctx.effect(() => dispose, 'agent-customizer: instructions')
-    applied.set(String(agent.id), { agent: presetId, dispose })
-    logger.info(`agent-customizer: agent ${String(agent.id)} (${presetId}) reads its own instructions`)
-  }
-
-  ctx.inject(['systemPrompt', 'agentPresets'], () => {
-    ctx.on('agent/created', ({ agent }) => {
-      try {
-        applyTo(agent)
-      } catch (error) {
-        logger.warn(`agent-customizer: could not apply the instructions: ${error instanceof Error ? error.message : String(error)}`)
-      }
-    }, { global: true })
-    ctx.on('agent/disposed', ({ agent }) => {
-      // The agent's own scope removed its prompt section; only the record goes.
-      applied.delete(String(agent?.id ?? ''))
-    }, { global: true })
-  })
-
-  ctx.effect(() => () => {
-    // Unloading the plugin does not dispose `agent.ctx` registrations by
-    // itself, so every section this plugin registered is removed here. The
-    // map is read at dispose time, not copied at mount time.
-    for (const dispose of applied.values()) {
-      try {
-        dispose()
-      } catch {
-        /* the agent's scope already removed it */
-      }
-    }
-    applied.clear()
-  }, 'agent-customizer: live agents')
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
@@ -329,45 +228,6 @@ export async function apply(ctx, config) {
       void (async () => {
         const request = await readBody(req)
         const action = request?.action
-        if (action === 'save-instructions' || action === 'clear-instructions') {
-          const agent = typeof request.agent === 'string' ? request.agent.trim() : ''
-          if (agent.length === 0) {
-            reply(400, { error: 'unknown-agent' })
-            return
-          }
-          // A roster that is readable must contain the agent: a typo would
-          // otherwise store instructions no agent ever reads.
-          const roster = await readPresets(ctx.get('agentPresets'))
-          if (roster.length > 0 && !roster.some((row) => row.id === agent)) {
-            reply(404, { error: 'unknown-agent', agent, available: roster.map((row) => row.id) })
-            return
-          }
-          const text = action === 'clear-instructions' ? '' : request.instructions
-          if (typeof text !== 'string') {
-            reply(400, { error: 'invalid-instructions' })
-            return
-          }
-          if (text.length > maxLength) {
-            reply(413, { error: 'too-long', maxLength })
-            return
-          }
-          const trimmed = text.trim()
-          const next = new Map(instructions)
-          if (trimmed.length === 0) next.delete(agent)
-          else next.set(agent, trimmed)
-          const stamp = Date.now()
-          const saved = await persist(next, stamp)
-          if (!saved) {
-            reply(500, { error: 'not-saved' })
-            return
-          }
-          instructions.clear()
-          for (const [id, value] of next) instructions.set(id, value)
-          updatedAt = stamp
-          logger.info(`agent-customizer: instructions updated for ${agent} (${String(trimmed.length)} characters)`)
-          reply(200, await snapshot())
-          return
-        }
         if (action === 'save-model') {
           const defaults = ctx.get('agentDefaultModel')
           if (defaults === undefined) {
@@ -418,6 +278,9 @@ export async function apply(ctx, config) {
             return
           }
           logger.info(`agent-customizer: default model is now ${provider}/${model}`)
+          const stamp = Date.now()
+          await persist(stamp)
+          updatedAt = stamp
           reply(200, await snapshot())
           return
         }

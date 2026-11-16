@@ -14,19 +14,21 @@
 
 ## What it does
 
-DeepSeek Harness lets you pick which agent answers a conversation. This plugin gives each of those agents a
-personality you control: a free-text **Instructions** block that is contributed to that agent's own system prompt,
-plus a **default model** for the deployment, both edited on one page.
+DeepSeek Harness lets you pick which agent answers a conversation. This plugin chooses the **default model**
+for the deployment: the model every freshly created agent starts on, editable from one page.
 
-Nothing is baked into the bundle. The instructions live in `state.json` next to the plugin, so a profile upgrade
-(or a `git pull`) never wipes what you wrote.
+The standing instructions that apply to *every* agent are not this plugin's business. They belong to
+`dsh-session-instructions`, which contributes one set of instructions to every agent of the profile — so
+you write them once, in *Settings → General → Instructions*, and never repeat them per agent.
+
+Nothing is baked into the bundle. The selection lives in `state.json` next to the plugin, so a profile upgrade
+(or a `git pull`) never wipes what you chose.
 
 ## Features
 
-- **Per-agent instructions** — one editor per agent in *Settings → Agent customization*; each agent only sees its own block.
-- **Deployment default model** — read and written from the same page, so the fallback model is not a YAML hunt.
-- **Survives upgrades** — text is persisted in the plugin's `state.json`, not in the profile's patch file.
-- **Bounded input** — `maxLength` rejects runaway pastes before they reach a system prompt.
+- **Deployment default model** — read and written from *Settings → Agent customization*, so the fallback model is not a YAML hunt.
+- **Per-agent reasoning effort** — the effort travels with the model selection.
+- **Survives upgrades** — the selection is persisted in the plugin's `state.json`, not in the profile's patch file.
 - **Localized UI** — English, Thai, and Chinese strings shipped in `locale/`.
 - No network calls, no credentials, no background timers.
 
@@ -62,29 +64,20 @@ The bundle's [`cordis.patch.yml`](cordis.patch.yml) inserts the host row. Overri
 
 | field | default | meaning |
 |---|---|---|
-| `endpoint` | `/plugins/agent-customizer` | Path the Web GUI reads and writes customizations at |
-| `maxLength` | `20000` | Largest instruction text accepted, in characters |
-
-Example override:
-
-```yaml
-- id: agent-customizer
-  config:
-    maxLength: 40000
-```
+| `endpoint` | `/plugins/agent-customizer` | Path the Web GUI reads and writes the model selection at |
 
 ## How it works
 
 1. The host row registers a small HTTP endpoint on the Web GUI origin and loads `state.json`.
-2. The client half (`client.js`) renders the editor for the current agent and PUTs the text back.
-3. On every turn, the host row contributes the stored text to that agent's system prompt — and nothing else.
+2. The client half (`client.js`) renders the model picker and PUTs the selection back.
+3. On every turn, the deployment's default model is the one a freshly created agent starts on — and nothing else.
 
 ## Files
 
 | file | role |
 |---|---|
-| `index.js` | host row: endpoint, persistence, system-prompt contribution |
-| `client.js` | Web GUI page: per-agent editor, default-model control |
+| `index.js` | host row: endpoint, persistence, the default-model selection |
+| `client.js` | Web GUI page: the default-model control |
 | `cordis.patch.yml` | the bundle patch that inserts the row |
 | `locale/{en,th,zh}.json` | UI strings |
 | `icon.svg` | plugin icon |
@@ -92,11 +85,11 @@ Example override:
 
 ## ภาษาไทย
 
-Plugin นี้ทำให้คุณปรับ **"ตัวตน" ของ agent แต่ละตัว** ได้จากหน้า Settings → Agent customization โดยตรง:
+Plugin นี้ให้คุณเลือก **โมเดลเริ่มต้นของ deployment** ได้จากหน้า Settings → Agent customization โดยตรง:
 
-- **Instructions** ของแต่ละ agent — ข้อความที่คุณเขียนจะถูกส่งเข้า system prompt ของ agent ตัวนั้นเท่านั้น
 - **โมเดลเริ่มต้นของ deployment** — ตั้ง/แก้ได้จากหน้าเดียวกัน ไม่ต้องไปแก้ YAML
 - ข้อความถูกเก็บใน `state.json` ของ plugin ไม่ใช่ใน patch ของโปรไฟล์ → อัปเกรด DSH หรือ `git pull` แล้วข้อความไม่หาย
+- **คำสั่งงานที่ใช้กับทุก agent** อยู่ที่ Settings → ทั่วไป → คำสั่ง (ของ `dsh-session-instructions`) — เขียนครั้งเดียว ได้ทุกตัว ไม่ต้องไล่แก้ทีละ agent
 
 ติดตั้ง: `git clone` แล้วสั่ง `plugin_manager install_bundle target=<path>` ใน DSH รีสตาร์ทหนึ่งครั้ง
 

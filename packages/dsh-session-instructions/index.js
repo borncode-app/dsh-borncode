@@ -6,10 +6,12 @@ import { fileURLToPath } from 'node:url'
 const STATE_FILE = fileURLToPath(new URL('./state.json', import.meta.url))
 /** Name of the prompt section this plugin owns. */
 const SECTION_NAME = 'user:instructions'
+/** Name of the prompt section this plugin owns inside one agent's own scope. */
+const AGENT_SECTION_NAME = 'session-instructions:agent'
 /** Largest instruction text the plugin stores when the row does not say otherwise. */
 const MAX_LENGTH = 20000
 /** Which generation of this file a running Host loaded; lives in every state answer. */
-const REVISION = '2026-11-12.1'
+const REVISION = '2026-11-12.2'
 
 export const Config = z.object({
   /** Path the Web GUI reads and writes the instructions at. */
@@ -20,7 +22,6 @@ export const Config = z.object({
 
 /** Hard services: the prompt registry and the HTTP carrier that serves the row. */
 export const inject = ['systemPrompt', 'webServer']
-
 /**
  * Read one setting, tolerating both a plain value and a live config getter.
  *
@@ -136,6 +137,68 @@ export async function apply(ctx, config) {
     // The user's text is data, never a `{{variable}}` reference.
     interpolate: false,
   }), 'session-instructions: prompt section')
+
+  /**
+   * Live agents that received the instructions, keyed by agent id.
+   *
+   * An Agent preset runs inside its own isolated scope, and a scoped
+   * registration there shadows the global one rather than reaching it. The
+   * instructions therefore ride every agent's own scope as well, so one set
+   * of standing instructions reaches the main agent, every preset, and every
+   * subagent without a per-agent copy.
+   *
+   * @type {Map<string, () => void>}
+   */
+  const applied = new Map()
+
+  /**
+   * Register the instructions on one agent's own scope.
+   *
+   * @param {object} agent - the live agent the event carries.
+   * @returns {void}
+   */
+  const applyTo = (agent) => {
+    if (agent?.ctx === undefined) return
+    const dispose = agent.ctx.systemPrompt.section({
+      name: AGENT_SECTION_NAME,
+      // Right behind the persona: the agent's identity, then the user's own
+      // instructions for it.
+      order: agent.ctx.systemPrompt.getSectionOrder('DEPLOYMENT_PERSONA_PREFIX') + 1,
+      text: sectionText,
+      // The user's text is data, never a `{{variable}}` reference.
+      interpolate: false,
+    })
+    agent.ctx.effect(() => dispose, 'session-instructions: agent section')
+    applied.set(String(agent.id), dispose)
+  }
+
+  ctx.inject(['systemPrompt'], () => {
+    ctx.on('agent/created', ({ agent }) => {
+      try {
+        applyTo(agent)
+      } catch (error) {
+        logger.warn(`session-instructions: could not apply the instructions: ${error instanceof Error ? error.message : String(error)}`)
+      }
+    }, { global: true })
+    ctx.on('agent/disposed', ({ agent }) => {
+      // The agent's own scope removed its prompt section; only the record goes.
+      applied.delete(String(agent?.id ?? ''))
+    }, { global: true })
+  })
+
+  ctx.effect(() => () => {
+    // Unloading the plugin does not dispose `agent.ctx` registrations by
+    // itself, so every section this plugin registered is removed here. The
+    // map is read at dispose time, not copied at mount time.
+    for (const dispose of applied.values()) {
+      try {
+        dispose()
+      } catch {
+        /* the agent's scope already removed it */
+      }
+    }
+    applied.clear()
+  }, 'session-instructions: live agents')
 
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',

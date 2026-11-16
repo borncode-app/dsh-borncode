@@ -17,7 +17,7 @@ the repository is shared.
 ```
 dsh-borncode/            the bundle: cordis.patch.yml, locale, docs, icon
 packages/
-  dsh-agent-customizer/    per-agent instructions and the default model
+  dsh-agent-customizer/    the deployment default model (per-agent instructions live in session-instructions)
   dsh-agent-desktop/       native computer use through the agent-desktop CLI
   dsh-auto-continue/       resumes a conversation after a spent usage limit
   dsh-auto-shutdown/       powers the computer down after a session finishes
@@ -31,7 +31,7 @@ packages/
 
 | row | package | what it does |
 |---|---|---|
-| `agent-customizer` | `packages/dsh-agent-customizer` | keeps the per-agent instructions and the deployment default model in **Settings → Agent customization** |
+| `agent-customizer` | `packages/dsh-agent-customizer` | keeps the deployment default model in **Settings → Agent customization** (the standing instructions live in **Settings → General → Instructions**) |
 | `agent-desktop` | `packages/dsh-agent-desktop` | native computer use through the `agent-desktop` CLI, with its own Settings page |
 | `auto-continue` | `packages/dsh-auto-continue` | books a scheduled continuation when a model usage limit runs out, so the conversation resumes by itself |
 | `auto-shutdown` | `packages/dsh-auto-shutdown` | powers the computer down through the operating system's own visible countdown — **ships off** |
