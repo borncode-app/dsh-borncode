@@ -1,6 +1,6 @@
 {
     "name":  "@local/dsh-auto-continue",
-    "version":  "1.0.0",
+    "version":  "1.1.0",
     "private":  true,
     "type":  "module",
     "description":  "Resumes a conversation automatically after a spent model usage limit resets.",
