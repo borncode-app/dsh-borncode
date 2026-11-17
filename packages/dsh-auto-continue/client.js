@@ -24,8 +24,10 @@ window.__ModuleLoader__.load({
         'auto.interval': 'Every {minutes}m',
         'auto.intervalAuto': 'Auto timing',
         'auto.intervalTitle': 'How often to try again after a usage limit. Click to change it.',
-        'auto.intervalPrompt': 'Continue automatically every how many minutes? Enter 0 to let the plugin pick the reset time itself.',
+        'auto.intervalPrompt': 'Minutes between continuations. 0 lets the plugin use the reset time.',
         'auto.intervalInvalid': 'Enter a whole number of minutes, 0 or more.',
+        'auto.intervalSave': 'Save the cadence',
+        'auto.intervalCancel': 'Cancel the change',
         'unit.h': '{count}h',
         'unit.m': '{count}m',
         'unit.s': '{count}s',
@@ -44,8 +46,10 @@ window.__ModuleLoader__.load({
         'auto.interval': 'ทุก {minutes} น.',
         'auto.intervalAuto': 'เวลาอัตโนมัติ',
         'auto.intervalTitle': 'จะลองต่อใหม่ทุกกี่นาทีหลังโควตาหมด คลิกเพื่อเปลี่ยน',
-        'auto.intervalPrompt': 'ให้ต่ออัตโนมัติทุกกี่นาที? ใส่ 0 เพื่อให้ plugin เลือกเวลารีเซ็ตเอง',
+        'auto.intervalPrompt': 'ให้ต่อใหม่ทุกกี่นาที? 0 = ให้ plugin ใช้เวลารีเซ็ตเอง',
         'auto.intervalInvalid': 'ใส่จำนวนนาทีเป็นเลขเต็ม ตั้งแต่ 0 ขึ้นไป',
+        'auto.intervalSave': 'บันทึกรอบเวลา',
+        'auto.intervalCancel': 'ยกเลิกการแก้ไข',
         'unit.h': '{count} ชม.',
         'unit.m': '{count} น.',
         'unit.s': '{count} ว.',
@@ -64,8 +68,10 @@ window.__ModuleLoader__.load({
         'auto.interval': '每 {minutes}分',
         'auto.intervalAuto': '自动计时',
         'auto.intervalTitle': '额度耗尽后每隔多少分钟重试。点击修改。',
-        'auto.intervalPrompt': '每隔多少分钟自动继续？输入 0 由插件自行选择重置时间。',
+        'auto.intervalPrompt': '每隔多少分钟继续？0 由插件使用重置时间。',
         'auto.intervalInvalid': '请输入 0 或更大的整数分钟。',
+        'auto.intervalSave': '保存间隔',
+        'auto.intervalCancel': '取消修改',
         'unit.h': '{count}小时',
         'unit.m': '{count}分',
         'unit.s': '{count}秒',
@@ -142,6 +148,37 @@ window.__ModuleLoader__.load({
         opacity: 0.75,
         whiteSpace: 'nowrap',
       },
+      editor: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '2px',
+        margin: '0 0 0 2px',
+      },
+      input: {
+        width: '44px',
+        height: '18px',
+        padding: '0 4px',
+        border: '1px solid currentColor',
+        borderRadius: '4px',
+        background: 'transparent',
+        color: 'inherit',
+        font: 'inherit',
+        fontSize: '11px',
+        lineHeight: '16px',
+        textAlign: 'center',
+      },
+      save: {
+        height: '16px',
+        width: '16px',
+        padding: '0',
+        border: 'none',
+        background: 'none',
+        color: 'inherit',
+        font: 'inherit',
+        fontSize: '12px',
+        lineHeight: '16px',
+        cursor: 'pointer',
+      },
     }
 
     /** A clockwise arrow: the limit came back, so the work resumes. */
@@ -200,6 +237,11 @@ window.__ModuleLoader__.load({
         const [state, setState] = React.useState(undefined)
         const [busy, setBusy] = React.useState(false)
         const [, setTick] = React.useState(0)
+        // The cadence editor is inline, not a browser dialog: Electron has no
+        // working window.prompt, so an in-page field is the only option that works.
+        const [editing, setEditing] = React.useState(false)
+        const [draft, setDraft] = React.useState('')
+        const [invalid, setInvalid] = React.useState(false)
 
         React.useEffect(() => {
           let cancelled = false
@@ -258,15 +300,21 @@ window.__ModuleLoader__.load({
         const minutes = typeof state.intervalMinutes === 'number' ? state.intervalMinutes : 0
 
         /** Ask the user for a cadence in minutes and store it for this conversation. */
-        const editInterval = () => {
-          const answer = window.prompt(t('auto.intervalPrompt'), String(minutes))
-          if (answer === null) return
-          const trimmed = answer.trim()
+        const openEditor = () => {
+          setEditing(true)
+          setDraft(String(minutes))
+        }
+
+        /** Commit the typed cadence; an invalid value keeps the editor open. */
+        const commitEditor = () => {
+          const trimmed = String(draft).trim()
           const value = trimmed === '' ? 0 : Number(trimmed)
           if (!Number.isInteger(value) || value < 0) {
-            window.alert(t('auto.intervalInvalid'))
+            setInvalid(true)
             return
           }
+          setInvalid(false)
+          setEditing(false)
           void send({ action: 'interval', minutes: value })
         }
 
@@ -318,21 +366,79 @@ window.__ModuleLoader__.load({
               '×',
             )
             : null,
-          on
+          on && editing
             ? React.createElement(
-              'button',
-              {
-                type: 'button',
-                style: { ...styles.interval, color: 'var(--dsw-alias-label-secondary)' },
-                title: t('auto.intervalTitle'),
-                'aria-label': t('auto.intervalTitle'),
-                'data-auto-interval': minutes > 0 ? String(minutes) : 'auto',
-                disabled: busy,
-                onClick: editInterval,
-              },
-              t(minutes > 0 ? 'auto.interval' : 'auto.intervalAuto', { minutes: String(minutes) }),
+              'span',
+              { style: styles.editor },
+              React.createElement('input', {
+                type: 'number',
+                min: 0,
+                step: 1,
+                value: draft,
+                autoFocus: true,
+                'aria-label': t('auto.intervalPrompt'),
+                title: invalid ? t('auto.intervalInvalid') : t('auto.intervalPrompt'),
+                style: { ...styles.input, borderColor: invalid ? 'var(--dsw-alias-state-error-primary)' : 'currentColor' },
+                'data-auto-interval-input': 'on',
+                onChange: (event) => {
+                  setDraft(event.target.value)
+                  setInvalid(false)
+                },
+                onKeyDown: (event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    commitEditor()
+                  } else if (event.key === 'Escape') {
+                    event.preventDefault()
+                    setEditing(false)
+                    setInvalid(false)
+                  }
+                },
+              }),
+              React.createElement(
+                'button',
+                {
+                  type: 'button',
+                  style: { ...styles.save, color: 'var(--dsw-alias-brand-primary)' },
+                  title: t('auto.intervalSave'),
+                  'aria-label': t('auto.intervalSave'),
+                  disabled: busy,
+                  'data-auto-interval-save': 'on',
+                  onClick: commitEditor,
+                },
+                '✓',
+              ),
+              React.createElement(
+                'button',
+                {
+                  type: 'button',
+                  style: { ...styles.cancel, color: 'var(--dsw-alias-label-secondary)' },
+                  title: t('auto.intervalCancel'),
+                  'aria-label': t('auto.intervalCancel'),
+                  'data-auto-interval-cancel': 'on',
+                  onClick: () => {
+                    setEditing(false)
+                    setInvalid(false)
+                  },
+                },
+                '×',
+              ),
             )
-            : null,
+            : on
+              ? React.createElement(
+                'button',
+                {
+                  type: 'button',
+                  style: { ...styles.interval, color: 'var(--dsw-alias-label-secondary)' },
+                  title: t('auto.intervalTitle'),
+                  'aria-label': t('auto.intervalTitle'),
+                  'data-auto-interval': minutes > 0 ? String(minutes) : 'auto',
+                  disabled: busy,
+                  onClick: openEditor,
+                },
+                t(minutes > 0 ? 'auto.interval' : 'auto.intervalAuto', { minutes: String(minutes) }),
+              )
+              : null,
         )
       }
 

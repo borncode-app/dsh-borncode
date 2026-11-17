@@ -9,6 +9,8 @@
   "auto.interval": "每 {minutes}分",
   "auto.intervalAuto": "自动计时",
   "auto.intervalTitle": "额度耗尽后每隔多少分钟重试。点击修改。",
-  "auto.intervalPrompt": "每隔多少分钟自动继续？输入 0 由插件自行选择重置时间。",
-  "auto.intervalInvalid": "请输入 0 或更大的整数分钟。"
+  "auto.intervalPrompt": "每隔多少分钟继续？0 由插件使用重置时间。",
+  "auto.intervalInvalid": "请输入 0 或更大的整数分钟。",
+  "auto.intervalSave": "保存间隔",
+  "auto.intervalCancel": "取消修改"
 }

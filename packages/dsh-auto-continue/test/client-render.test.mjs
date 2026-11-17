@@ -309,41 +309,79 @@ tree = await mount({
 assert.equal(intervalOf(tree), undefined)
 console.log('ok 13 cadence control hidden while off')
 
-// 14. Choosing a cadence posts the interval action and adopts the answer.
+// 14. The badge opens an inline editor — never a browser dialog, which Electron
+//     does not provide — and saving posts the interval action.
 tree = await mount({
   localeId: 'en',
   state: { enabled: true, supported: true, intervalMinutes: 0, now: Date.now(), pending: [] },
 })
-const asked = []
-globalThis.window.prompt = (message, initial) => {
-  asked.push({ message, initial })
-  return '15'
-}
 await intervalOf(tree).props.onClick()
 await flush()
+tree = render(chip, { sessionId: 'session-1' })
+const input = find(tree, node => node.type === 'input')
+assert.ok(input !== undefined, 'inline input renders instead of a prompt')
+assert.equal(input.props.value, '0', 'draft starts at the current cadence')
+assert.equal(input.props.type, 'number')
+const save = find(tree, node => node.props?.['data-auto-interval-save'] !== undefined)
+assert.ok(save !== undefined, 'save control renders')
+const before14 = calls.filter(call => call.options?.method === 'POST').length
+input.props.onChange({ target: { value: '15' } })
+tree = render(chip, { sessionId: 'session-1' })
+find(tree, node => node.props?.['data-auto-interval-save'] !== undefined).props.onClick()
+await flush()
 const intervalCall = calls.filter(call => call.options?.method === 'POST').at(-1)
+assert.equal(calls.filter(call => call.options?.method === 'POST').length, before14 + 1)
 assert.equal(JSON.parse(intervalCall.options.body).action, 'interval')
 assert.equal(JSON.parse(intervalCall.options.body).minutes, 15)
 assert.equal(JSON.parse(intervalCall.options.body).sessionId, 'session-1')
-console.log('ok 14 interval posted:', intervalCall.options.body, '| asked:', JSON.stringify(asked[0]?.initial))
+console.log('ok 14 inline editor posted:', intervalCall.options.body)
 
-// 15. A cancelled prompt posts nothing; an invalid answer warns instead.
-const before = calls.filter(call => call.options?.method === 'POST').length
-globalThis.window.prompt = () => null
-tree = render(chip, { sessionId: 'session-1' })
+// 15. Escape cancels the editor without posting; an invalid value marks the
+//     field and keeps the editor open instead of saving.
+tree = await mount({
+  localeId: 'en',
+  state: { enabled: true, supported: true, intervalMinutes: 0, now: Date.now(), pending: [] },
+})
 await intervalOf(tree).props.onClick()
 await flush()
-assert.equal(calls.filter(call => call.options?.method === 'POST').length, before, 'cancel posted nothing')
-const warned = []
-globalThis.window.alert = (message) => warned.push(message)
-globalThis.window.prompt = () => 'soon'
 tree = render(chip, { sessionId: 'session-1' })
+const typed = find(tree, node => node.type === 'input')
+const postsBefore = calls.filter(call => call.options?.method === 'POST').length
+typed.props.onKeyDown({ key: 'Escape', preventDefault: () => undefined })
+tree = render(chip, { sessionId: 'session-1' })
+assert.equal(find(tree, node => node.type === 'input'), undefined, 'escape closed the editor')
+assert.equal(calls.filter(call => call.options?.method === 'POST').length, postsBefore, 'escape posted nothing')
+
 await intervalOf(tree).props.onClick()
 await flush()
-assert.equal(calls.filter(call => call.options?.method === 'POST').length, before, 'invalid posted nothing')
-assert.match(warned[0] ?? '', /whole number/u)
-console.log('ok 15 cancel and invalid input post nothing; warned:', warned[0])
+tree = render(chip, { sessionId: 'session-1' })
+find(tree, node => node.type === 'input').props.onChange({ target: { value: 'soon' } })
+tree = render(chip, { sessionId: 'session-1' })
+find(tree, node => node.props?.['data-auto-interval-save'] !== undefined).props.onClick()
+await flush()
+tree = render(chip, { sessionId: 'session-1' })
+assert.ok(find(tree, node => node.type === 'input') !== undefined, 'invalid value kept the editor open')
+assert.equal(calls.filter(call => call.options?.method === 'POST').length, postsBefore, 'invalid posted nothing')
+console.log('ok 15 escape cancels and invalid input stays open')
 
-console.log('\nall 15 render checks passed')
+// 16. Enter commits, so the field works without reaching for the save button.
+tree = await mount({
+  localeId: 'th',
+  state: { enabled: true, supported: true, intervalMinutes: 0, now: Date.now(), pending: [] },
+})
+await intervalOf(tree).props.onClick()
+await flush()
+tree = render(chip, { sessionId: 'session-1' })
+find(tree, node => node.type === 'input').props.onChange({ target: { value: '5' } })
+tree = render(chip, { sessionId: 'session-1' })
+const before16 = calls.filter(call => call.options?.method === 'POST').length
+find(tree, node => node.type === 'input').props.onKeyDown({ key: 'Enter', preventDefault: () => undefined })
+await flush()
+const enterCall = calls.filter(call => call.options?.method === 'POST').at(-1)
+assert.equal(calls.filter(call => call.options?.method === 'POST').length, before16 + 1)
+assert.equal(JSON.parse(enterCall.options.body).minutes, 5)
+console.log('ok 16 enter committed:', enterCall.options.body)
+
+console.log('\nall 16 render checks passed')
 // The chip keeps a polling timer alive, exactly as it does in the page.
 process.exit(0)

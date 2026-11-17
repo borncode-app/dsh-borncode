@@ -9,6 +9,8 @@
   "auto.interval": "ทุก {minutes} น.",
   "auto.intervalAuto": "เวลาอัตโนมัติ",
   "auto.intervalTitle": "จะลองต่อใหม่ทุกกี่นาทีหลังโควตาหมด คลิกเพื่อเปลี่ยน",
-  "auto.intervalPrompt": "ให้ต่ออัตโนมัติทุกกี่นาที? ใส่ 0 เพื่อให้ plugin เลือกเวลารีเซ็ตเอง",
-  "auto.intervalInvalid": "ใส่จำนวนนาทีเป็นเลขเต็ม ตั้งแต่ 0 ขึ้นไป"
+  "auto.intervalPrompt": "ให้ต่อใหม่ทุกกี่นาที? 0 = ให้ plugin ใช้เวลารีเซ็ตเอง",
+  "auto.intervalInvalid": "ใส่จำนวนนาทีเป็นเลขเต็ม ตั้งแต่ 0 ขึ้นไป",
+  "auto.intervalSave": "บันทึกรอบเวลา",
+  "auto.intervalCancel": "ยกเลิกการแก้ไข"
 }
