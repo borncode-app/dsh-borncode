@@ -390,3 +390,95 @@ console.log('ok 17 restart adopted the on session and disarmed the off one')
 
 writeFileSync(statePath, `${JSON.stringify({ sessions: {} }, null, 2)}\n`)
 console.log('\nall 17 checks passed')
+
+// ---------------------------------------------------------------------------
+// A fixed cadence ("continue every N minutes") replaces the adaptive wait.
+// ---------------------------------------------------------------------------
+
+// 18. An `interval` action stores the cadence and the next booking waits exactly
+//     that long, ignoring the provider hint and the quota probe entirely.
+writeFileSync(statePath, `${JSON.stringify({ sessions: { 'session-fixed': true } }, null, 2)}\n`)
+const scheduleFixed = fakeSchedule()
+const ctxFixed = fakeContext(scheduleFixed)
+await apply(ctxFixed, Config({ intervalMinutes: 0 }))
+state = await request(ctxFixed, 'GET', undefined, { sessionId: 'session-fixed' })
+assert.equal(state.json.intervalMinutes, 0, 'adaptive by default')
+state = await request(ctxFixed, 'POST', { action: 'interval', sessionId: 'session-fixed', minutes: 7 })
+assert.equal(state.json.intervalMinutes, 7)
+assert.deepEqual(JSON.parse(readFileSync(statePath, 'utf8')).intervals, { 'session-fixed': 7 })
+await spendLimit(ctxFixed, 'session-fixed', 1)
+const fixedBooked = scheduleFixed.calls.filter(call => call[0] === 'create').at(-1)
+assert.equal(fixedBooked[1].timing.after_seconds, 420, `expected 420s, got ${String(fixedBooked[1].timing.after_seconds)}`)
+assert.ok(fixedBooked[1].title.includes('every 7m'), fixedBooked[1].title)
+state = await request(ctxFixed, 'GET', undefined, { sessionId: 'session-fixed' })
+assert.equal(state.json.pending[0].source, 'interval')
+assert.equal(state.json.pending[0].intervalMinutes, 7)
+console.log('ok 18 fixed cadence booked:', JSON.stringify(state.json.pending[0]))
+
+// 19. The provider hint no longer wins once a cadence is booked.
+await fire(ctxFixed, 'agent/request-error', {
+  turn: 2,
+  step: 1,
+  provider: 'minimax-api',
+  failure: { code: 'RATE_LIMIT', message: 'slow down', status: 429, providerRetryAfterMs: 60_000 },
+  signal: new AbortController().signal,
+  agent: { session: { id: 'session-fixed', header: { id: 'session-fixed', isSeeded: false } } },
+})
+const movedFixed = scheduleFixed.calls.filter(call => call[0] === 'edit').at(-1)
+assert.equal(movedFixed[1].patch.timing.after_seconds, 420, `hint overrode the cadence: ${String(movedFixed[1].patch.timing.after_seconds)}`)
+console.log('ok 19 provider hint did not override the fixed cadence')
+
+// 20. `0` restores the adaptive wait for that conversation.
+state = await request(ctxFixed, 'POST', { action: 'interval', sessionId: 'session-fixed', minutes: 0 })
+assert.equal(state.json.intervalMinutes, 0)
+assert.deepEqual(JSON.parse(readFileSync(statePath, 'utf8')).intervals, { 'session-fixed': 0 })
+await spendLimit(ctxFixed, 'session-fixed', 3)
+const adaptiveAgain = scheduleFixed.calls.filter(call => call[0] === 'edit').at(-1)
+assert.notEqual(adaptiveAgain[1].patch.timing.after_seconds, 420, 'still fixed after reset to 0')
+assert.equal(scheduleFixed.calls.filter(call => call[0] === 'create').length, 1)
+console.log('ok 20 zero restored the adaptive wait; after', adaptiveAgain[1].patch.timing.after_seconds, 's')
+
+// 21. The cadence survives a restart, read back from the stored state file.
+const scheduleRestart = fakeSchedule()
+await scheduleRestart.create({
+  title: 'Auto-continue #4 · minimax-api · every 15m',
+  prompt: '<auto_continue>continue</auto_continue>',
+  timing: { kind: 'after', after_seconds: 900 },
+  target: { kind: 'session', sessionId: 'session-fixed' },
+})
+writeFileSync(statePath, `${JSON.stringify({ sessions: { 'session-fixed': true }, intervals: { 'session-fixed': 15 } }, null, 2)}\n`)
+const ctxRestart = fakeContext(scheduleRestart)
+await apply(ctxRestart, Config({ intervalMinutes: 0 }))
+state = await request(ctxRestart, 'GET', undefined, { sessionId: 'session-fixed' })
+assert.equal(state.json.intervalMinutes, 15)
+assert.equal(state.json.pending[0].intervalMinutes, 15)
+assert.equal(state.json.pending[0].source, 'restored')
+assert.equal(state.json.pending[0].provider, 'minimax-api')
+console.log('ok 21 cadence restored after restart:', JSON.stringify(state.json.pending[0]))
+
+// 22. A cadence outside the schedule range is clamped rather than booked.
+writeFileSync(statePath, `${JSON.stringify({ sessions: { 'session-big': true } }, null, 2)}\n`)
+const scheduleBig = fakeSchedule()
+const ctxBig = fakeContext(scheduleBig)
+await apply(ctxBig, Config({ intervalMinutes: 0 }))
+state = await request(ctxBig, 'POST', { action: 'interval', sessionId: 'session-big', minutes: 999999 })
+assert.equal(state.json.intervalMinutes, 10080, 'clamped to a week')
+await spendLimit(ctxBig, 'session-big', 1)
+const bigBooked = scheduleBig.calls.filter(call => call[0] === 'create').at(-1)
+assert.equal(bigBooked[1].timing.after_seconds, 604800)
+console.log('ok 22 oversized cadence clamped to', bigBooked[1].timing.after_seconds, 's')
+
+// 23. The plugin config supplies the default cadence when a session has none.
+writeFileSync(statePath, `${JSON.stringify({ sessions: { 'session-cfg': true } }, null, 2)}\n`)
+const scheduleCfg = fakeSchedule()
+const ctxCfg = fakeContext(scheduleCfg)
+await apply(ctxCfg, Config({ intervalMinutes: 3 }))
+state = await request(ctxCfg, 'GET', undefined, { sessionId: 'session-cfg' })
+assert.equal(state.json.intervalMinutes, 3)
+await spendLimit(ctxCfg, 'session-cfg', 1)
+const cfgBooked = scheduleCfg.calls.filter(call => call[0] === 'create').at(-1)
+assert.equal(cfgBooked[1].timing.after_seconds, 180)
+console.log('ok 23 config default cadence booked:', cfgBooked[1].timing.after_seconds, 's')
+
+writeFileSync(statePath, `${JSON.stringify({ sessions: {} }, null, 2)}\n`)
+console.log('\nall 23 checks passed')

@@ -1,9 +1,14 @@
 {
   "meta": {
     "title": "Auto-continue after usage limits",
-    "description": "Resumes an interrupted conversation by itself when a spent model usage limit resets, with an on/off switch under the composer."
+    "description": "Resumes an interrupted conversation by itself when a spent model usage limit resets, with an on/off switch and a configurable cadence under the composer."
   },
   "auto.title": "Auto-continue",
   "auto.on": "Auto: on",
-  "auto.off": "Auto: off"
+  "auto.off": "Auto: off",
+  "auto.interval": "Every {minutes}m",
+  "auto.intervalAuto": "Auto timing",
+  "auto.intervalTitle": "How often to try again after a usage limit. Click to change it.",
+  "auto.intervalPrompt": "Continue automatically every how many minutes? Enter 0 to let the plugin pick the reset time itself.",
+  "auto.intervalInvalid": "Enter a whole number of minutes, 0 or more."
 }

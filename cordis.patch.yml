@@ -57,6 +57,11 @@
         maxWaitSeconds: 604800
         baseWaitSeconds: 300
         maxBackoffSeconds: 3600
+        # 0 keeps the adaptive wait (provider hint, then the quota reset, then
+        # backoff). A positive value is a fixed cadence in minutes: every
+        # continuation waits exactly that long. The composer chip's badge
+        # overrides it per conversation.
+        intervalMinutes: 0
         maxAttempts: 12
         # Read the reset time the quota plugin already probed for this provider.
         quotaEndpoint: /plugins/model-quota

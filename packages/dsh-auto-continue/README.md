@@ -30,6 +30,8 @@ It ships **off**. Turning it on for a deployment is a deliberate choice, and the
   falls through to the normal retry policy untouched.
 - **Bounded** — `minWaitSeconds` / `maxWaitSeconds` skip wake-ups that are too soon to matter or too far out to be
   useful (a weekly window three days away is left to you).
+- **Fixed cadence, if you want one** — set `intervalMinutes` (or click the badge on the chip) and every continuation
+  waits exactly that many minutes, ignoring the reset time entirely.
 - **Backoff + attempts** — repeated failures widen the wait and stop at `maxAttempts`.
 - **Per-conversation** — the chip stores the runtime choice; nothing global changes.
 
@@ -66,6 +68,7 @@ Restart once, then switch it on for the conversations where it is appropriate.
 | `maxWaitSeconds` | `604800` | Farther-out resets are left to the user |
 | `baseWaitSeconds` | `300` | First wait when the reset time is unknown |
 | `maxBackoffSeconds` | `3600` | Ceiling for the widened wait |
+| `intervalMinutes` | `0` | Fixed cadence in minutes; `0` keeps the adaptive wait. The chip's badge overrides it per conversation |
 | `maxAttempts` | `12` | Give up after this many continuations |
 | `quotaEndpoint` | `/plugins/model-quota` | Where the reset time is read from |
 | `probeTimeoutMs` | `8000` | How long that read may take |
@@ -77,6 +80,11 @@ Restart once, then switch it on for the conversations where it is appropriate.
 429 / quota error ──▶ is the code worth waiting for?
                           │ yes
                           ▼
+             is a fixed cadence booked?
+                     │              │ yes
+                     │ no           ▼
+                     │      wait exactly N minutes
+                     ▼
             ask dsh-model-quota for the reset time
                           │
                           ▼
@@ -109,6 +117,8 @@ Plugin นี้แก้ปัญหา "โควตาหมดกลาง�
 - เป็น **scheduled message** ไม่ใช่ timer ในหน่วยความจำ → ปิดแอป/รีบูตก็ยังไม่หาย
 - ค่าเริ่มต้นคือ **ปิด** เปิดเป็นรายบทสนทนาจากชิปบนช่องพิมพ์
 - มีขอบเขตเวลา (`minWaitSeconds` / `maxWaitSeconds`) และ backoff + จำนวนครั้งสูงสุดกันวนไม่จบ
+- **ตั้งรอบเวลาเองได้** — ใส่ `intervalMinutes` (หรือคลิกป้ายบนชิป) เพื่อให้ต่อทุก N นาทีตามที่กำหนด
+  โดยไม่สนใจเวลารีเซ็ตจริงของ provider; ค่า `0` = ปล่อยให้ plugin เลือกเวลารีเซ็ตเอง (ค่าเริ่มต้น)
 
 ## License
 

@@ -21,6 +21,11 @@ window.__ModuleLoader__.load({
         'auto.pendingTitle': 'Automatic continuation is booked. It resumes in {time} (attempt {attempt}). Click × to cancel.',
         'auto.cancel': 'Cancel the automatic continuation',
         'auto.unsupported': 'Automatic continuation needs the schedule service.',
+        'auto.interval': 'Every {minutes}m',
+        'auto.intervalAuto': 'Auto timing',
+        'auto.intervalTitle': 'How often to try again after a usage limit. Click to change it.',
+        'auto.intervalPrompt': 'Continue automatically every how many minutes? Enter 0 to let the plugin pick the reset time itself.',
+        'auto.intervalInvalid': 'Enter a whole number of minutes, 0 or more.',
         'unit.h': '{count}h',
         'unit.m': '{count}m',
         'unit.s': '{count}s',
@@ -36,6 +41,11 @@ window.__ModuleLoader__.load({
         'auto.pendingTitle': 'ตั้งเวลาให้ต่ออัตโนมัติแล้ว จะเริ่มในอีก {time} (ครั้งที่ {attempt}) คลิก × เพื่อยกเลิก',
         'auto.cancel': 'ยกเลิกการต่ออัตโนมัติ',
         'auto.unsupported': 'การต่ออัตโนมัติต้องใช้บริการตั้งเวลา',
+        'auto.interval': 'ทุก {minutes} น.',
+        'auto.intervalAuto': 'เวลาอัตโนมัติ',
+        'auto.intervalTitle': 'จะลองต่อใหม่ทุกกี่นาทีหลังโควตาหมด คลิกเพื่อเปลี่ยน',
+        'auto.intervalPrompt': 'ให้ต่ออัตโนมัติทุกกี่นาที? ใส่ 0 เพื่อให้ plugin เลือกเวลารีเซ็ตเอง',
+        'auto.intervalInvalid': 'ใส่จำนวนนาทีเป็นเลขเต็ม ตั้งแต่ 0 ขึ้นไป',
         'unit.h': '{count} ชม.',
         'unit.m': '{count} น.',
         'unit.s': '{count} ว.',
@@ -51,6 +61,11 @@ window.__ModuleLoader__.load({
         'auto.pendingTitle': '已安排自动继续，将在 {time}后恢复（第 {attempt} 次）。点击 × 取消。',
         'auto.cancel': '取消自动续接',
         'auto.unsupported': '自动续接需要定时任务服务。',
+        'auto.interval': '每 {minutes}分',
+        'auto.intervalAuto': '自动计时',
+        'auto.intervalTitle': '额度耗尽后每隔多少分钟重试。点击修改。',
+        'auto.intervalPrompt': '每隔多少分钟自动继续？输入 0 由插件自行选择重置时间。',
+        'auto.intervalInvalid': '请输入 0 或更大的整数分钟。',
         'unit.h': '{count}小时',
         'unit.m': '{count}分',
         'unit.s': '{count}秒',
@@ -112,6 +127,20 @@ window.__ModuleLoader__.load({
         lineHeight: '16px',
         cursor: 'pointer',
         opacity: 0.7,
+      },
+      interval: {
+        height: '20px',
+        padding: '0 4px',
+        margin: '0 0 0 2px',
+        border: '1px solid currentColor',
+        borderRadius: '10px',
+        background: 'none',
+        font: 'inherit',
+        fontSize: '11px',
+        lineHeight: '18px',
+        cursor: 'pointer',
+        opacity: 0.75,
+        whiteSpace: 'nowrap',
       },
     }
 
@@ -225,6 +254,21 @@ window.__ModuleLoader__.load({
         const remaining = mine === undefined ? 0 : mine.dueAt - Date.now()
         const waiting = mine !== undefined && remaining > 0
         const on = state.enabled === true
+        // The cadence this conversation would book right now; `0` is adaptive.
+        const minutes = typeof state.intervalMinutes === 'number' ? state.intervalMinutes : 0
+
+        /** Ask the user for a cadence in minutes and store it for this conversation. */
+        const editInterval = () => {
+          const answer = window.prompt(t('auto.intervalPrompt'), String(minutes))
+          if (answer === null) return
+          const trimmed = answer.trim()
+          const value = trimmed === '' ? 0 : Number(trimmed)
+          if (!Number.isInteger(value) || value < 0) {
+            window.alert(t('auto.intervalInvalid'))
+            return
+          }
+          void send({ action: 'interval', minutes: value })
+        }
 
         let label
         let title
@@ -272,6 +316,21 @@ window.__ModuleLoader__.load({
                 onClick: () => void send({ action: 'cancel' }),
               },
               '×',
+            )
+            : null,
+          on
+            ? React.createElement(
+              'button',
+              {
+                type: 'button',
+                style: { ...styles.interval, color: 'var(--dsw-alias-label-secondary)' },
+                title: t('auto.intervalTitle'),
+                'aria-label': t('auto.intervalTitle'),
+                'data-auto-interval': minutes > 0 ? String(minutes) : 'auto',
+                disabled: busy,
+                onClick: editInterval,
+              },
+              t(minutes > 0 ? 'auto.interval' : 'auto.intervalAuto', { minutes: String(minutes) }),
             )
             : null,
         )

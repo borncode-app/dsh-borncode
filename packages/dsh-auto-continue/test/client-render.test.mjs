@@ -279,6 +279,71 @@ await flush()
 assert.equal(tree, null)
 console.log('ok 10 failed fetch renders nothing')
 
-console.log('\nall 10 render checks passed')
+// 11. A fixed cadence shows on the chip and is absent while the chip is off.
+globalThis.fetch = serve
+const intervalOf = (tree) => find(tree, node => node.props?.['data-auto-interval'] !== undefined)
+tree = await mount({
+  localeId: 'en',
+  state: { enabled: true, supported: true, intervalMinutes: 7, now: Date.now(), pending: [] },
+})
+assert.ok(intervalOf(tree) !== undefined, 'interval control renders while on')
+assert.equal(intervalOf(tree).props['data-auto-interval'], '7')
+assert.match(textOf(tree), /Every 7m/u)
+console.log('ok 11 fixed cadence shown:', textOf(tree))
+
+// 12. `0` is reported as automatic timing rather than "Every 0m".
+tree = await mount({
+  localeId: 'th',
+  state: { enabled: true, supported: true, intervalMinutes: 0, now: Date.now(), pending: [] },
+})
+assert.equal(intervalOf(tree).props['data-auto-interval'], 'auto')
+assert.match(textOf(tree), /เวลาอัตโนมัติ/u)
+assert.doesNotMatch(textOf(tree), /ทุก 0/u)
+console.log('ok 12 automatic timing label:', textOf(tree))
+
+// 13. Switched off: no cadence control, since there is nothing to book.
+tree = await mount({
+  localeId: 'en',
+  state: { enabled: false, supported: true, intervalMinutes: 7, now: Date.now(), pending: [] },
+})
+assert.equal(intervalOf(tree), undefined)
+console.log('ok 13 cadence control hidden while off')
+
+// 14. Choosing a cadence posts the interval action and adopts the answer.
+tree = await mount({
+  localeId: 'en',
+  state: { enabled: true, supported: true, intervalMinutes: 0, now: Date.now(), pending: [] },
+})
+const asked = []
+globalThis.window.prompt = (message, initial) => {
+  asked.push({ message, initial })
+  return '15'
+}
+await intervalOf(tree).props.onClick()
+await flush()
+const intervalCall = calls.filter(call => call.options?.method === 'POST').at(-1)
+assert.equal(JSON.parse(intervalCall.options.body).action, 'interval')
+assert.equal(JSON.parse(intervalCall.options.body).minutes, 15)
+assert.equal(JSON.parse(intervalCall.options.body).sessionId, 'session-1')
+console.log('ok 14 interval posted:', intervalCall.options.body, '| asked:', JSON.stringify(asked[0]?.initial))
+
+// 15. A cancelled prompt posts nothing; an invalid answer warns instead.
+const before = calls.filter(call => call.options?.method === 'POST').length
+globalThis.window.prompt = () => null
+tree = render(chip, { sessionId: 'session-1' })
+await intervalOf(tree).props.onClick()
+await flush()
+assert.equal(calls.filter(call => call.options?.method === 'POST').length, before, 'cancel posted nothing')
+const warned = []
+globalThis.window.alert = (message) => warned.push(message)
+globalThis.window.prompt = () => 'soon'
+tree = render(chip, { sessionId: 'session-1' })
+await intervalOf(tree).props.onClick()
+await flush()
+assert.equal(calls.filter(call => call.options?.method === 'POST').length, before, 'invalid posted nothing')
+assert.match(warned[0] ?? '', /whole number/u)
+console.log('ok 15 cancel and invalid input post nothing; warned:', warned[0])
+
+console.log('\nall 15 render checks passed')
 // The chip keeps a polling timer alive, exactly as it does in the page.
 process.exit(0)

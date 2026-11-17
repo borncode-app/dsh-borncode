@@ -26,9 +26,11 @@ const MAX_DELAY_SECONDS = 7 * 24 * 3600
 /** Longest task title the schedule service accepts. */
 const MAX_TITLE_LENGTH = 120
 /** Which generation of this file a running Host loaded; lives in every state answer. */
-const REVISION = '2026-11-12.7'
+const REVISION = '2026-11-17.1'
 /** Most session choices the state file keeps; the oldest fall off first. */
 const MAX_SESSIONS = 500
+/** Largest interval a user may book, in minutes; a week is the schedule ceiling. */
+const MAX_INTERVAL_MINUTES = 10080
 
 export const Config = z.object({
   /** Path the Web GUI reads and posts the toggle to. */
@@ -48,6 +50,14 @@ export const Config = z.object({
   baseWaitSeconds: z.number().default(300),
   /** Ceiling for the growing unknown-reset wait. */
   maxBackoffSeconds: z.number().default(3600),
+  /**
+   * Fixed wait between continuations, in minutes. `0` keeps the adaptive wait
+   * (provider hint, then the quota reset, then backoff). Any positive value
+   * overrides all three: every continuation waits exactly this long, which is
+   * what "continue every N minutes" means. A per-session value stored from the
+   * composer chip wins over this field.
+   */
+  intervalMinutes: z.number().default(0),
   /** Continuations attempted for one limit episode before giving up. */
   maxAttempts: z.number().default(12),
   /** Route of the quota plugin read for a machine-readable reset time. */
@@ -102,6 +112,11 @@ export async function apply(ctx, config) {
   const generation = new Map()
   /** Session id to an explicit ON choice; a missing entry uses the plugin config. */
   const sessions = new Map()
+  /**
+   * Session id to an explicitly booked interval, in minutes, where `0` means
+   * "use the adaptive wait". A missing entry falls back to the plugin config.
+   */
+  const intervals = new Map()
   let ready = false
 
   /** The plugin config's default choice for a session with nothing stored. */
@@ -113,19 +128,41 @@ export async function apply(ctx, config) {
     return configured()
   }
 
-  /** Drop the oldest explicit choices until the map fits the state-file cap. */
+  /** Clamp one requested interval to the range the schedule service accepts. */
+  const clampInterval = (minutes) => {
+    if (!Number.isFinite(minutes) || minutes <= 0) return 0
+    return Math.min(MAX_INTERVAL_MINUTES, Math.max(1, Math.round(minutes)))
+  }
+
+  /** The fixed interval for one conversation, in minutes; `0` means adaptive. */
+  const intervalFor = (sessionId) => {
+    if (typeof sessionId === 'string' && sessionId.length > 0 && intervals.has(sessionId)) {
+      return intervals.get(sessionId)
+    }
+    return clampInterval(read('intervalMinutes', 0))
+  }
+
+  /** Drop the oldest explicit choices until the maps fit the state-file cap. */
   const trimSessions = () => {
     while (sessions.size > MAX_SESSIONS) {
       const oldest = sessions.keys().next()
-      if (oldest.done === true) return
+      if (oldest.done === true) break
       sessions.delete(oldest.value)
+    }
+    while (intervals.size > MAX_SESSIONS) {
+      const oldest = intervals.keys().next()
+      if (oldest.done === true) break
+      intervals.delete(oldest.value)
     }
   }
 
   /** Persist the explicit per-session choices; a failure must not lose the in-memory decision. */
   const persist = async () => {
     trimSessions()
-    const body = `${JSON.stringify({ sessions: Object.fromEntries(sessions) }, null, 2)}\n`
+    const body = `${JSON.stringify({
+      sessions: Object.fromEntries(sessions),
+      intervals: Object.fromEntries(intervals),
+    }, null, 2)}\n`
     const temporary = `${STATE_FILE}.tmp`
     try {
       await writeFile(temporary, body, 'utf8')
@@ -218,12 +255,21 @@ export async function apply(ctx, config) {
   }
 
   /** The wait before the next continuation attempt, and why it is that long. */
-  const waitSeconds = async (provider, failure, attempts, model) => {
+  const waitSeconds = async (provider, failure, attempts, model, fixedMinutes) => {
     const floor = Math.max(MIN_DELIVERY_SECONDS, read('minWaitSeconds', MIN_DELIVERY_SECONDS))
     const ceiling = Math.max(floor, Math.min(MAX_DELAY_SECONDS, read('maxWaitSeconds', MAX_DELAY_SECONDS)))
     const fit = (seconds) => {
       if (!Number.isFinite(seconds) || seconds <= 0 || seconds > ceiling) return undefined
       return Math.max(floor, Math.round(seconds))
+    }
+
+    // A booked interval replaces every inference: the user asked for exactly
+    // this cadence, so the provider hint, the quota reset and the backoff are
+    // all skipped rather than quietly overridden. The configured wait bounds
+    // still clamp it, so one field cannot ask for more than the schedule allows.
+    if (typeof fixedMinutes === 'number' && fixedMinutes > 0) {
+      const requested = Math.round(fixedMinutes * 60)
+      return { seconds: Math.min(ceiling, Math.max(floor, requested)), source: 'interval' }
     }
 
     const hinted = failure?.providerRetryAfterMs
@@ -275,10 +321,14 @@ export async function apply(ctx, config) {
       logger.info(`auto-continue: ${String(sessionId)} reached ${String(attempts - 1)} attempts; staying stopped`)
       return
     }
-    const wait = await waitSeconds(provider, failure, attempts, model)
+    const wait = await waitSeconds(provider, failure, attempts, model, intervalFor(sessionId))
     if (current() !== capture) return
     const dueAt = Date.now() + wait.seconds * 1000
-    const title = `${TASK_TITLE} #${String(attempts)} · ${String(provider)}`.slice(0, MAX_TITLE_LENGTH)
+    // The cadence travels in the title so a restart that only sees the stored
+    // task can report it; `#N` and the provider keep their existing places.
+    const title = wait.source === 'interval'
+      ? `${TASK_TITLE} #${String(attempts)} · ${String(provider)} · every ${String(Math.round(wait.seconds / 60))}m`.slice(0, MAX_TITLE_LENGTH)
+      : `${TASK_TITLE} #${String(attempts)} · ${String(provider)}`.slice(0, MAX_TITLE_LENGTH)
 
     let task
     if (previous !== undefined && previous.taskId !== undefined) {
@@ -322,6 +372,7 @@ export async function apply(ctx, config) {
       dueAt,
       attempts,
       provider: typeof provider === 'string' ? provider : '',
+      intervalMinutes: wait.source === 'interval' ? Math.round(wait.seconds / 60) : 0,
       source: wait.source,
       delivered: false,
     })
@@ -352,11 +403,16 @@ export async function apply(ctx, config) {
       const dueAt = Date.parse(String(task.scheduledAt))
       if (!Number.isFinite(dueAt)) continue
       const match = /#(\d+)/u.exec(String(task.title))
+      const intervalMatch = /· every (\d+)m/u.exec(String(task.title))
+      // The title is "<TASK_TITLE> #N · <provider>" plus an optional "· every Nm"
+      // suffix, so the provider is the segment after `#N`, not the last one.
+      const providerSegment = String(task.title).split('·').at(1)?.trim() ?? ''
       pending.set(sessionId, {
         taskId: String(task.id),
         dueAt,
         attempts: match === null ? 1 : Number(match[1]),
-        provider: String(task.title).split('·').at(-1)?.trim() ?? '',
+        provider: providerSegment,
+        intervalMinutes: intervalMatch === null ? 0 : Number(intervalMatch[1]),
         source: 'restored',
         delivered: false,
       })
@@ -380,6 +436,7 @@ export async function apply(ctx, config) {
           dueAt: entry.dueAt,
           attempts: entry.attempts,
           provider: entry.provider,
+          intervalMinutes: entry.intervalMinutes ?? 0,
           source: entry.source,
           taskId: entry.taskId ?? null,
         }))
@@ -387,10 +444,13 @@ export async function apply(ctx, config) {
       revision: REVISION,
       sessionId: wanted,
       enabled: enabledFor(wanted),
+      // The cadence this conversation would book right now, in minutes; `0` is adaptive.
+      intervalMinutes: intervalFor(wanted),
       supported: schedule() !== undefined,
       now: Date.now(),
       pending: booked,
       sessions: [...sessions.keys()],
+      intervals: Object.fromEntries(intervals),
     }
   }
 
@@ -434,6 +494,15 @@ export async function apply(ctx, config) {
       if (stored !== null && typeof stored === 'object' && !Array.isArray(stored)) {
         for (const [sessionId, value] of Object.entries(stored)) {
           if (value === true) sessions.set(sessionId, true)
+        }
+      }
+      // A stored interval of `0` is a real choice ("adaptive"), so zero is kept
+      // rather than treated as missing.
+      const storedIntervals = saved?.intervals
+      if (storedIntervals !== null && typeof storedIntervals === 'object' && !Array.isArray(storedIntervals)) {
+        for (const [sessionId, value] of Object.entries(storedIntervals)) {
+          const minutes = clampInterval(Number(value))
+          if (Number.isFinite(Number(value)) && Number(value) >= 0) intervals.set(sessionId, minutes)
         }
       }
       trimSessions()
@@ -529,6 +598,13 @@ export async function apply(ctx, config) {
             if (!enabledFor(sessionId)) await disarm(sessionId, 'automatic continuation is off for this session')
           } else if (request.action === 'cancel' && sessionId !== null) {
             await disarm(sessionId, 'the user cancelled it')
+          } else if (request.action === 'interval' && sessionId !== null) {
+            // A positive value books that cadence; `0` restores the adaptive wait.
+            const minutes = clampInterval(Number(request.minutes))
+            intervals.set(sessionId, minutes)
+            await persist()
+            // The next booking reads the new value; a booking already in flight
+            // keeps the wait it was created with until the next limit failure.
           } else if (request.action === 'test' && read('debugTest', false) === true && sessionId !== null) {
             const service = schedule()
             if (service === undefined) throw new Error('the schedule service is not mounted')

@@ -1,9 +1,14 @@
 {
   "meta": {
     "title": "额度用尽后自动续接",
-    "description": "模型用量额度耗尽后，额度恢复时自动继续被中断的对话；输入框下方提供开关。"
+    "description": "模型用量额度耗尽后，额度恢复时自动继续被中断的对话；输入框下方提供开关和可配置的重试间隔。"
   },
   "auto.title": "自动续接",
   "auto.on": "自动续接：开",
-  "auto.off": "自动续接：关"
+  "auto.off": "自动续接：关",
+  "auto.interval": "每 {minutes}分",
+  "auto.intervalAuto": "自动计时",
+  "auto.intervalTitle": "额度耗尽后每隔多少分钟重试。点击修改。",
+  "auto.intervalPrompt": "每隔多少分钟自动继续？输入 0 由插件自行选择重置时间。",
+  "auto.intervalInvalid": "请输入 0 或更大的整数分钟。"
 }
