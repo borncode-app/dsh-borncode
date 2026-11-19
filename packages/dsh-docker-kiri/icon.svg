@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Dev containers on kiri">
-  <rect x="4" y="4" width="56" height="56" rx="14" fill="#0f2f3d"/>
-  <path d="M18 22h12v12H18z" fill="#39b6a8"/>
-  <path d="M34 22h12v12H34z" fill="#7fd4c9"/>
-  <path d="M26 34h12v12H26z" fill="#39b6a8"/>
-  <path d="M14 30h36" stroke="#0b1f29" stroke-width="2.5" stroke-linecap="round" opacity=".5"/>
-  <path d="M20 50h24" stroke="#e8b74a" stroke-width="3.5" stroke-linecap="round"/>
-</svg>

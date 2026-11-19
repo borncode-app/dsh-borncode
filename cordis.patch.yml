@@ -1,6 +1,6 @@
-# One install entry for the nine BornCode plugins.
+# One install entry for the eight BornCode plugins.
 #
-# This bundle inserts the rows the nine standalone bundles used to insert,
+# This bundle inserts the rows the eight standalone bundles used to insert,
 # naming the same packages by a path beside this file, so the bundle carries
 # its own packages and one install is enough.
 #
@@ -8,7 +8,7 @@
 # crashing row does not take the others down, and a bad field blocks only its
 # own row. Turn a part off in the bundle's detail page.
 #
-# Deselect the nine standalone bundles while this one is selected, or their
+# Deselect the eight standalone bundles while this one is selected, or their
 # rows appear twice.
 - insert:
     # Keeps the per-agent instructions the user writes in Settings â†’ Agent
@@ -138,21 +138,4 @@
         model: deepseek-flash
         maxChars: 48000
         maxMessageChars: 4000
-
-    # Tells the model that this machine's development containers run on the
-    # kiri engine through ordinary docker commands. Nothing is blocked: kiri
-    # speaks the Docker Engine API, so a plain `docker compose up` reaches it
-    # once its context is active.
-    - id: docker-kiri
-      name: '@local/dsh-docker-kiri'
-      config:
-        # Turn the guidance off without uninstalling the plugin.
-        enabled: true
-        # The docker context the development loop is expected to use.
-        context: kiri
-        # Write the runtime split into the system prompt.
-        guideInPrompt: true
-        # Also state which buildx builder a plain `docker build` resolves to, so
-        # a build that lands on the wrong engine is visible before it runs.
-        reportBuilder: true
 
