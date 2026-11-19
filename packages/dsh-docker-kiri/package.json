@@ -1,0 +1,47 @@
+{
+  "name": "@local/dsh-docker-kiri",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Routes development container work to the kiri runtime and keeps production builds on the default Docker runtime.",
+  "author": "BornCode (https://github.com/borncode-app)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/borncode-app/dsh-borncode.git"
+  },
+  "homepage": "https://github.com/borncode-app/dsh-borncode#readme",
+  "bugs": {
+    "url": "https://github.com/borncode-app/dsh-borncode/issues"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "dsh-plugin",
+    "borncode",
+    "docker",
+    "kiri",
+    "container"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md"
+  ],
+  "dependencies": {
+    "@deepseek-ai/schemastery": "~3.19.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

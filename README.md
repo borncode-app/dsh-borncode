@@ -22,6 +22,7 @@ packages/
   dsh-auto-continue/       resumes a conversation after a spent usage limit
   dsh-auto-shutdown/       powers the computer down after a session finishes
   dsh-browser-use/         native browser control through browser-use
+  dsh-docker-kiri/         dev containers on kiri, production builds on Docker
   dsh-session-instructions/ standing instructions read before any work starts
   dsh-session-sync/        imports Claude Code and MiniMax Code sessions
   dsh-side-chat/           a right-sidebar chat about the current session
@@ -36,6 +37,7 @@ packages/
 | `auto-continue` | `packages/dsh-auto-continue` | books a scheduled continuation when a model usage limit runs out, so the conversation resumes by itself |
 | `auto-shutdown` | `packages/dsh-auto-shutdown` | powers the computer down through the operating system's own visible countdown — **ships off** |
 | `browser-use` | `packages/dsh-browser-use` | native browser control through `browser-use`, with its own Settings page |
+| `docker-kiri` | `packages/dsh-docker-kiri` | sends development container work to the [kiri](https://github.com/libracoder/kiri) runtime through its docker context, while builds and pushes keep the default Docker runtime |
 | `session-instructions` | `packages/dsh-session-instructions` | reads the standing instructions in **Settings → General → Instructions** before any work starts |
 | `session-sync` | `packages/dsh-session-sync` | imports Claude Code and MiniMax Code conversations as Sessions, flagged with their origin |
 | `side-chat` | `packages/dsh-side-chat` | a right-sidebar chat that answers questions about the current session |
@@ -47,7 +49,7 @@ packages/
    row resolves by the package's own name and keeps its title, icon, and
    Config schema.
 
-If the eight standalone packages are also installed, turn them off in
+If the nine standalone packages are also installed, turn them off in
 **Plugins** — otherwise their rows appear twice.
 
 ## Turn one part off

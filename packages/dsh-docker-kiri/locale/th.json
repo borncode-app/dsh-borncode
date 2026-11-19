@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "คอนเทนเนอร์ dev บน kiri",
+    "description": "ส่งงานคอนเทนเนอร์สำหรับ dev และเทสต์ไปที่รันไทม์ kiri ผ่าน docker context ของมัน ส่วน build และ push ที่ทำอิมเมจสำหรับ prod ยังใช้ Docker ปกติตามเดิม"
+  }
+}

@@ -1,0 +1,21 @@
+# Inserts the docker-kiri Host row. Development container work — starting,
+# running or inspecting containers — is denied unless it targets the kiri
+# docker context, while `docker build` and `docker push` keep the default
+# runtime so the production artifact is built as usual.
+- insert:
+    - id: docker-kiri
+      name: '@local/dsh-docker-kiri'
+      config:
+        # Turn the hook off without uninstalling the plugin.
+        enabled: true
+        # Docker context the development loop runs on.
+        context: kiri
+        # Other context names that also count as a kiri-managed runtime.
+        contextAliases:
+          - kiri
+        # Put the kiri rule in the system prompt, so the model reaches for it
+        # before a denied call rather than after one.
+        guideInPrompt: true
+        # Deny a development call that names no context. Off leaves the system
+        # prompt as the only guidance.
+        block: true

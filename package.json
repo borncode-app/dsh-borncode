@@ -3,7 +3,7 @@
     "version":  "1.0.0",
     "private":  true,
     "type":  "module",
-    "description":  "Installs the BornCode plugins as one Plugins entry: agent customization, native desktop control, auto-continue, auto-shutdown, browser use, session instructions, session sync, and the side chat.",
+    "description":  "Installs the BornCode plugins as one Plugins entry: agent customization, native desktop control, auto-continue, auto-shutdown, browser use, dev containers on kiri, session instructions, session sync, and the side chat.",
     "author":  "BornCode (https://github.com/borncode-app)",
     "license":  "MIT",
     "repository":  {
@@ -44,6 +44,7 @@
                          "@local/dsh-auto-continue":  "link:./packages/dsh-auto-continue",
                          "@local/dsh-auto-shutdown":  "link:./packages/dsh-auto-shutdown",
                          "@local/dsh-browser-use":  "link:./packages/dsh-browser-use",
+                         "@local/dsh-docker-kiri":  "link:./packages/dsh-docker-kiri",
                          "@local/dsh-session-instructions":  "link:./packages/dsh-session-instructions",
                          "@local/dsh-session-sync":  "link:./packages/dsh-session-sync",
                          "@local/dsh-side-chat":  "link:./packages/dsh-side-chat"
