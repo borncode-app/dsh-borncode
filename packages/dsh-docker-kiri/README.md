@@ -1,60 +1,59 @@
 # Dev containers on kiri
 
-Sends container work for development and testing to the [kiri](https://github.com/libracoder/kiri)
-runtime, while builds and pushes that produce the production image keep the
-normal Docker runtime.
+Tells the model that this machine's development containers run on the
+[kiri](https://github.com/libracoder/kiri) engine, and states where a
+production build goes.
 
-## What it does
+**Nothing is blocked.** kiri speaks the Docker Engine API, so `docker compose up`,
+`docker ps` and `docker run` reach it with no extra flag once its context is
+active. There is no kiri-specific syntax to remember and no command rewriting.
 
-kiri speaks the Docker Engine API, so `docker`, Compose and buildx work
-unchanged against it through a docker context named `kiri`. This plugin makes
-that split explicit:
+## What it contributes
 
-| Command | Runtime |
-|---|---|
-| `docker run`, `create`, `start`, `stop`, `rm`, `exec`, `logs`, `ps`, … | kiri |
-| `docker compose up`, `compose run`, `compose exec` | kiri |
-| `docker build`, `buildx build`, `push` | the default Docker runtime |
-| `docker compose build`, `compose push` | the default Docker runtime |
+The system prompt gains a section built from a live probe of the machine:
 
-A development call that names no context is denied with the corrected command
-in the failure reason, and the rule is also written into the system prompt so
-the model reaches for kiri before the first denial rather than after it.
+- which docker context is currently active,
+- whether that is the expected `kiri` context, and
+- which buildx builder a plain `docker build` would select.
 
-A command that already names a context (`--context`, `--host`, `DOCKER_CONTEXT`)
-is left alone: the explicit choice wins.
+The section is rebuilt from that probe on every assembly and the probe refreshes
+once a minute, so switching context is reflected without a restart.
 
-## Behavior when kiri is absent
+## Why the builder matters
 
-The plugin reads `docker context ls`. When no `kiri` context is registered it
-keeps denying development calls, and the reason says how to install kiri and
-which command to run afterwards. Production builds are never blocked, so an
-install-in-progress does not stop the rest of the work.
+A build follows the **selected buildx builder**, not the active docker context.
+That is the one place where the dev/prod split is not automatic:
 
-Install kiri from [runkiri.com/releases](https://runkiri.com/releases/); on
-Windows the `.msi` serves the context through WSL 2, and opening the app once
-registers it.
+```
+docker context ls                     # what plain docker commands reach
+docker buildx ls                      # what docker build reaches
+```
+
+A build or push that must produce the production artifact belongs on the
+project's normal Docker runtime. Check the builder before a release build
+instead of assuming the active context decides it.
 
 ## Configuration
 
 | Field | Default | Meaning |
 |---|---|---|
-| `enabled` | `true` | Turn the hook off without uninstalling it. |
-| `context` | `kiri` | Docker context the development loop runs on. |
-| `contextAliases` | `["kiri"]` | Other context names that also count as kiri. |
-| `guideInPrompt` | `true` | Put the kiri rule in the system prompt. |
-| `block` | `true` | Deny a development call that names no context. |
+| `enabled` | `true` | Turn the guidance off without uninstalling the plugin. |
+| `context` | `kiri` | The docker context the development loop is expected to use. |
+| `guideInPrompt` | `true` | Write the runtime split into the system prompt. |
+| `reportBuilder` | `true` | Also state which buildx builder a plain `docker build` resolves to. |
 
-With `block: false` the system prompt is the only guidance, which suits a
-workflow where a denial would interrupt more than it saves.
+## Install kiri
+
+Get it from [runkiri.com/releases](https://runkiri.com/releases/); on Windows the
+`.msi` serves its context through WSL 2. kiri needs cgroup v2 in its guest — if
+containers fail with `guest stopped before connecting`, set
+`kernelCommandLine=cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1` in
+`%UserProfile%\.wslconfig` and run `wsl --shutdown`.
 
 ## Limits
 
-- Only the `bash` and `pwsh` tools are inspected, through their `command`
-  argument. A container started from inside a script the tool runs by other
-  means is not seen.
-- The guard reads the context list synchronously from its last probe, taken at
-  load and refreshed at most once a minute in the background.
-- Builds are classified by the docker subcommand, not by the image tag. A
-  development image built with `docker build` deliberately stays on the
-  default runtime, as the split you asked for.
+- The plugin reports; it never denies or rewrites a command. A build that lands
+  on the wrong engine is visible in the prompt and in `docker buildx ls`, not
+  prevented.
+- The probe reads `docker context ls` and `docker buildx ls`; with no docker CLI
+  on `PATH` the section states that no context is readable.

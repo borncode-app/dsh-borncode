@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Dev containers on kiri",
-    "description": "Sends container work for development and testing to the kiri runtime through its docker context, while builds and pushes that produce the production image keep the normal Docker runtime."
+    "description": "Tells the model that development containers run on the kiri engine through ordinary docker commands, and where a production build goes. Nothing is blocked."
   }
 }

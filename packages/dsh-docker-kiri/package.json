@@ -1,9 +1,9 @@
 {
   "name": "@local/dsh-docker-kiri",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "Routes development container work to the kiri runtime and keeps production builds on the default Docker runtime.",
+  "description": "Tells the model that the development container loop runs on the kiri engine through ordinary docker commands, and where a production build goes.",
   "author": "BornCode (https://github.com/borncode-app)",
   "license": "MIT",
   "repository": {

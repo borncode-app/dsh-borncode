@@ -1,21 +1,20 @@
-# Inserts the docker-kiri Host row. Development container work — starting,
-# running or inspecting containers — is denied unless it targets the kiri
-# docker context, while `docker build` and `docker push` keep the default
-# runtime so the production artifact is built as usual.
+# Tells the model that this machine's development containers run on the kiri
+# engine, and where a production build goes.
+#
+# Nothing is blocked: kiri speaks the Docker Engine API, so once its context is
+# active, `docker compose up` and `docker run` reach it with no extra flag. The
+# only fact worth stating is where a build goes, because a build follows the
+# selected buildx builder rather than the active docker context.
 - insert:
     - id: docker-kiri
       name: '@local/dsh-docker-kiri'
       config:
-        # Turn the hook off without uninstalling the plugin.
+        # Turn the guidance off without uninstalling the plugin.
         enabled: true
-        # Docker context the development loop runs on.
+        # The docker context the development loop is expected to use.
         context: kiri
-        # Other context names that also count as a kiri-managed runtime.
-        contextAliases:
-          - kiri
-        # Put the kiri rule in the system prompt, so the model reaches for it
-        # before a denied call rather than after one.
+        # Write the runtime split into the system prompt.
         guideInPrompt: true
-        # Deny a development call that names no context. Off leaves the system
-        # prompt as the only guidance.
-        block: true
+        # Also state which buildx builder a plain `docker build` resolves to, so
+        # a build that lands on the wrong engine is visible before it runs.
+        reportBuilder: true

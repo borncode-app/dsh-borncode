@@ -2,19 +2,22 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 /**
- * The plugin keeps its classifier private, so this test drives it through the
- * public entry point: a fake Cordis context captures the guard the plugin
- * registers, and the test calls that guard with real tool executions.
+ * The plugin contributes guidance only, so these tests check what it says and
+ * that it registers no guard at all.
  */
 
 /** A fake context recording what the plugin registered. */
 function fakeContext() {
-  const captured = { guard: null, sections: [], logger: [] }
+  const captured = { guard: null, sections: [], intervals: 0, logger: [] }
   const ctx = {
     logger: () => ({ info: (line) => captured.logger.push(line), warn: () => {} }),
     effect: (factory) => {
       const dispose = factory()
       return () => dispose?.()
+    },
+    interval: () => {
+      captured.intervals += 1
+      return () => {}
     },
     tools: {
       guard: (fn) => {
@@ -35,103 +38,67 @@ function fakeContext() {
   return { ctx, captured }
 }
 
-/** Build a tool execution the guard accepts. */
-function exec(name, args) {
-  return { callId: 'c1', rootCallId: 'c1', name, token: 't1', arguments: args, signal: new AbortController().signal }
-}
-
 /**
- * Load the plugin and wait for its first docker context probe.
+ * Load the plugin and wait for its first probe.
  *
- * @returns {Promise<{ guard: Function|null, sections: object[], logger: string[] }>} the capture.
+ * @param {object} [overrides] - Config overrides.
+ * @returns {Promise<object>} the capture.
  */
-async function load() {
+async function load(overrides = {}) {
   const { apply, Config } = await import('../index.js')
   const { ctx, captured } = fakeContext()
-  apply(ctx, Config({}))
-  await new Promise((resolve) => setTimeout(resolve, 400))
+  apply(ctx, Config(overrides))
+  await new Promise((resolve) => setTimeout(resolve, 600))
   return captured
 }
 
-test('development commands are denied with the kiri command', async () => {
+test('no guard is registered: nothing is blocked', async () => {
   const captured = await load()
-  assert.ok(captured.guard, 'the plugin registers a guard')
-  const reason = captured.guard(exec('pwsh', { command: 'docker run --rm alpine echo hello' }))
-  assert.ok(reason, 'the call is denied')
-  assert.match(reason, /docker-kiri/)
-  assert.match(reason, /docker --context kiri run --rm alpine echo hello/)
+  assert.equal(captured.guard, null, 'the plugin must not deny any call')
 })
 
-test('compose up is a development call', async () => {
-  const captured = await load()
-  const reason = captured.guard(exec('pwsh', { command: 'docker compose up -d' }))
-  assert.ok(reason)
-  assert.match(reason, /docker --context kiri compose up -d/)
-})
-
-test('a build keeps the default runtime', async () => {
-  const captured = await load()
-  assert.equal(captured.guard(exec('pwsh', { command: 'docker build -t app:1 .' })), undefined)
-})
-
-test('compose build keeps the default runtime', async () => {
-  const captured = await load()
-  assert.equal(captured.guard(exec('pwsh', { command: 'docker compose build' })), undefined)
-})
-
-test('a push keeps the default runtime', async () => {
-  const captured = await load()
-  assert.equal(captured.guard(exec('pwsh', { command: 'docker push registry/app:1' })), undefined)
-})
-
-test('image housekeeping is not a runtime choice', async () => {
-  const captured = await load()
-  // Deleting an image must work for a production build the hook just allowed.
-  assert.equal(captured.guard(exec('pwsh', { command: 'docker rmi app:1' })), undefined)
-  assert.equal(captured.guard(exec('pwsh', { command: 'docker image prune -f' })), undefined)
-})
-
-test('removing a development container is still a development call', async () => {
-  const captured = await load()
-  const reason = captured.guard(exec('pwsh', { command: 'docker rm -f dev-box' }))
-  assert.ok(reason)
-  assert.match(reason, /docker --context kiri rm -f dev-box/)
-})
-
-test('an explicit context is left alone', async () => {
-  const captured = await load()
-  assert.equal(captured.guard(exec('pwsh', { command: 'docker --context desktop-linux run alpine' })), undefined)
-})
-
-test('a non-docker command is left alone', async () => {
-  const captured = await load()
-  assert.equal(captured.guard(exec('pwsh', { command: 'npm test' })), undefined)
-})
-
-test('another tool is never inspected', async () => {
-  const captured = await load()
-  assert.equal(captured.guard(exec('read', { command: 'docker run alpine' })), undefined)
-})
-
-test('a chained docker command is caught', async () => {
-  const captured = await load()
-  const reason = captured.guard(exec('bash', { command: 'npm run db:up && docker compose up -d' }))
-  assert.ok(reason)
-  assert.match(reason, /docker --context kiri compose up -d/)
-})
-
-test('the system prompt carries the dev/prod split', async () => {
+test('exactly one prompt section is contributed', async () => {
   const captured = await load()
   assert.equal(captured.sections.length, 1)
-  const text = captured.sections[0].text()
-  assert.match(text, /docker --context kiri compose up/)
-  assert.match(text, /Do not pass --context kiri to a build/)
+  assert.equal(captured.sections[0].name, 'docker-kiri')
 })
 
-test('the denial is actionable whether or not kiri is installed', async () => {
+test('the section describes the active context and the builder', async () => {
   const captured = await load()
-  const reason = captured.guard(exec('pwsh', { command: 'docker ps' }))
-  assert.ok(reason)
-  assert.match(reason, /docker --context kiri ps/)
-  assert.ok(captured.logger.some((line) => line.includes('docker-kiri')))
+  const text = captured.sections[0].text()
+  assert.match(text, /<docker-kiri>/)
+  assert.match(text, /<\/docker-kiri>/)
+  // It states the engine's nature rather than prescribing kiri-only syntax.
+  assert.match(text, /standard Docker Engine endpoint|Docker-compatible engine/)
+  assert.match(text, /buildx builder/)
+})
+
+test('the guidance never tells the model to block or deny', async () => {
+  const captured = await load()
+  const text = captured.sections[0].text()
+  assert.doesNotMatch(text, /deny|denied|block|refuse/i)
+})
+
+test('plain docker commands are described as already reaching kiri', async () => {
+  const captured = await load()
+  const text = captured.sections[0].text()
+  // When kiri is active, or the machine is told how to select it, the section
+  // must make clear that ordinary commands work without extra flags.
+  assert.match(text, /docker compose up|docker context use kiri|Plain docker commands/)
+})
+
+test('a refresh interval is armed', async () => {
+  const captured = await load()
+  assert.equal(captured.intervals, 1)
+})
+
+test('the load-time log reports, it does not warn', async () => {
+  const captured = await load()
+  assert.ok(captured.logger.some((line) => line.includes('no command is blocked')))
+})
+
+test('the builder probe can be turned off', async () => {
+  const captured = await load({ reportBuilder: false })
+  const text = captured.sections[0].text()
+  assert.doesNotMatch(text, /buildx builder/)
 })

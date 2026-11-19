@@ -139,23 +139,20 @@
         maxChars: 48000
         maxMessageChars: 4000
 
-    # Routes development container work to the kiri runtime through its docker
-    # context. Builds and pushes that produce the production artifact keep the
-    # default Docker runtime, so a `docker build` is never redirected.
+    # Tells the model that this machine's development containers run on the
+    # kiri engine through ordinary docker commands. Nothing is blocked: kiri
+    # speaks the Docker Engine API, so a plain `docker compose up` reaches it
+    # once its context is active.
     - id: docker-kiri
       name: '@local/dsh-docker-kiri'
       config:
-        # Turn the hook off without uninstalling the plugin.
+        # Turn the guidance off without uninstalling the plugin.
         enabled: true
-        # Docker context the development loop runs on.
+        # The docker context the development loop is expected to use.
         context: kiri
-        # Other context names that also count as a kiri-managed runtime.
-        contextAliases:
-          - kiri
-        # Put the kiri rule in the system prompt, so the model reaches for it
-        # before a denied call rather than after one.
+        # Write the runtime split into the system prompt.
         guideInPrompt: true
-        # Deny a development call that names no context. Off leaves the system
-        # prompt as the only guidance.
-        block: true
+        # Also state which buildx builder a plain `docker build` resolves to, so
+        # a build that lands on the wrong engine is visible before it runs.
+        reportBuilder: true
 
