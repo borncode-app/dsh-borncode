@@ -20,6 +20,9 @@ window.__ModuleLoader__.load({
     const ROUTE_AUTOMATION = '/plugins/auto-shutdown'
     /** Standing instructions, owned by dsh-session-instructions. */
     const ROUTE_INSTRUCTIONS = '/plugins/session-instructions'
+    /** MiniMax credit proxy and the daily check-in panel. */
+    const ROUTE_MINIMAX_CREDIT = '/plugins/minimax-credit/status'
+    const ROUTE_MINIMAX_CHECKIN = '/plugins/minimax-checkin/status'
 
     /** English copy. */
     const en = {
@@ -36,6 +39,16 @@ window.__ModuleLoader__.load({
       'tab.desktop': 'Agent desktop',
       'tab.browser': 'Browser use',
       'tab.automation': 'Automation',
+      'tab.minimax': 'MiniMax',
+      'minimax.credits': 'Credits',
+      'minimax.plan': 'Plan',
+      'minimax.remaining': 'remaining',
+      'minimax.token': 'Grant',
+      'minimax.checkin': 'Daily check-in',
+      'minimax.streak': 'Streak',
+      'minimax.claim': 'Claim today',
+      'minimax.claiming': 'Claiming…',
+      'minimax.claimedToday': 'Already claimed today',
       'tab.supervisor': 'Supervisor',
 
       'check': 'Check for updates',
@@ -122,6 +135,16 @@ window.__ModuleLoader__.load({
       'tab.desktop': 'เอเจนต์เดสก์ท็อป',
       'tab.browser': 'บราวเซอร์',
       'tab.automation': 'ระบบอัตโนมัติ',
+      'tab.minimax': 'MiniMax',
+      'minimax.credits': 'เครดิต',
+      'minimax.plan': 'แพ็กเกจ',
+      'minimax.remaining': 'คงเหลือ',
+      'minimax.token': 'โทเคน',
+      'minimax.checkin': 'เช็คอินรายวัน',
+      'minimax.streak': 'ต่อเนื่อง',
+      'minimax.claim': 'รับวันนี้',
+      'minimax.claiming': 'กำลังรับ…',
+      'minimax.claimedToday': 'รับวันนี้แล้ว',
       'tab.supervisor': 'ตัวจัดการ',
 
       'check': 'ตรวจหาอัปเดต',
@@ -208,6 +231,16 @@ window.__ModuleLoader__.load({
       'tab.desktop': '智能体桌面',
       'tab.browser': '浏览器',
       'tab.automation': '自动化',
+      'tab.minimax': 'MiniMax',
+      'minimax.credits': '额度',
+      'minimax.plan': '套餐',
+      'minimax.remaining': '剩余',
+      'minimax.token': '授权',
+      'minimax.checkin': '每日签到',
+      'minimax.streak': '连续天数',
+      'minimax.claim': '领取今日',
+      'minimax.claiming': '领取中…',
+      'minimax.claimedToday': '今日已领取',
       'tab.supervisor': '管家',
 
       'check': '检查更新',
@@ -810,6 +843,129 @@ window.__ModuleLoader__.load({
     })
 
     /**
+     * MiniMax: the credit balance and the daily check-in streak.
+     *
+     * Both routes are the ones the MiniMax rows already serve, so this tab is a
+     * second door to the same state rather than a copy of it. The check-in is a
+     * claim button only when the panel says something is claimable; otherwise
+     * it reports the streak and stops, because a button that does nothing is
+     * worse than no button.
+     */
+    const MinimaxTab = () => {
+      const [credit, setCredit] = React.useState(null)
+      const [checkin, setCheckin] = React.useState(null)
+      const [error, setError] = React.useState('')
+      const [busy, setBusy] = React.useState(false)
+      const [tick, setTick] = React.useState(0)
+
+      React.useEffect(() => {
+        let live = true
+        setError('')
+        Promise.allSettled([getJson(ROUTE_MINIMAX_CREDIT), getJson(ROUTE_MINIMAX_CHECKIN)])
+          .then(([creditResult, checkinResult]) => {
+            if (!live) return
+            if (creditResult.status === 'fulfilled') setCredit(creditResult.value)
+            else setError(String(creditResult.reason?.message ?? creditResult.reason))
+            if (checkinResult.status === 'fulfilled') setCheckin(checkinResult.value)
+            else if (creditResult.status === 'fulfilled') setError(String(checkinResult.reason?.message ?? checkinResult.reason))
+          })
+        return () => { live = false }
+      }, [tick])
+
+      if (credit === null && checkin === null) {
+        return React.createElement('div', { style: { ...styles.card, ...styles.muted } },
+          error !== '' ? error : t('loading'))
+      }
+
+      const credits = credit?.credits ?? {}
+      const plan = credits.plan ?? {}
+      const token = credit?.token ?? {}
+      const panel = checkin?.panel ?? {}
+      const days = Array.isArray(panel.days) ? panel.days : []
+      const canClaim = panel.claimedToday !== true && panel.claimable !== false
+
+      const claim = async () => {
+        if (busy) return
+        setBusy(true)
+        setError('')
+        try {
+          await postJson(ROUTE_MINIMAX_CHECKIN.replace('/status', '/claim'), {})
+          setTick(value => value + 1)
+        } catch (problem) {
+          setError(problem instanceof Error ? problem.message : String(problem))
+        } finally {
+          setBusy(false)
+        }
+      }
+
+      return React.createElement(
+        'div',
+        null,
+        error !== '' ? React.createElement('div', { style: { color: DANGER, marginBottom: '8px' } }, error) : null,
+        React.createElement(
+          'div',
+          { style: styles.card },
+          React.createElement(
+            'div',
+            { style: styles.rowBetween },
+            React.createElement('strong', null, t('minimax.credits')),
+            React.createElement(Badge, {
+              colour: credits.ok === true ? SUCCESS : WARNING,
+              text: plan.hasTokenPlan === true ? `${t('minimax.plan')} ${plan.tier ?? ''}`.trim() : t('na'),
+            }),
+          ),
+          React.createElement('div', { style: { ...styles.mono, marginTop: '8px', fontSize: '1.4em' } },
+            `${credits.remaining ?? t('na')} ${t('minimax.remaining')}`),
+          React.createElement('div', { style: { ...styles.muted, ...styles.mono, marginTop: '4px' } },
+            credit?.proxy ?? ''),
+          React.createElement('div', { style: { ...styles.muted, marginTop: '6px' } },
+            `${t('minimax.token')}: ${token.ok === true ? t('ok') : t('na')}`
+            + (token.expiresInMs ? ` · ${Math.round(token.expiresInMs / 3_600_000)}h` : '')),
+        ),
+        React.createElement(
+          'div',
+          { style: styles.card },
+          React.createElement(
+            'div',
+            { style: styles.rowBetween },
+            React.createElement('strong', null, t('minimax.checkin')),
+            React.createElement('span', { style: { color: SUCCESS } },
+              `${t('minimax.streak')} ${panel.streak ?? 0}`),
+          ),
+          days.length > 0
+            ? React.createElement(
+              'div',
+              { style: { display: 'flex', gap: '4px', marginTop: '10px', flexWrap: 'wrap' } },
+              ...days.map(day => React.createElement(
+                'div',
+                {
+                  key: day.dayNo,
+                  style: {
+                    flex: '1 1 40px', textAlign: 'center', padding: '6px 4px', borderRadius: '7px',
+                    border: '1px solid var(--dsh-border, rgba(127,127,127,0.25))',
+                    background: day.status === 3 ? 'color-mix(in srgb, #35c98a 16%, transparent)'
+                      : day.isToday ? 'color-mix(in srgb, #e0a11b 16%, transparent)' : 'transparent',
+                  },
+                },
+                React.createElement('div', { style: { ...styles.mono, fontSize: '0.75em', opacity: 0.7 } }, `D${day.dayNo}`),
+                React.createElement('div', { style: { ...styles.mono, fontSize: '0.85em' } }, `+${day.points}`),
+              )),
+            )
+            : null,
+          React.createElement(
+            'div',
+            { style: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', flexWrap: 'wrap' } },
+            canClaim
+              ? React.createElement('button', {
+                style: styles.buttonPrimary, disabled: busy, onClick: () => void claim(),
+              }, busy ? t('minimax.claiming') : t('minimax.claim'))
+              : React.createElement('span', { style: { ...styles.muted, color: SUCCESS } }, t('minimax.claimedToday')),
+          ),
+        ),
+      )
+    }
+
+    /**
      * Automation: the shutdown switch and its countdown.
      *
      * The switch is per Session: the plugin stores a choice keyed by the
@@ -881,6 +1037,7 @@ window.__ModuleLoader__.load({
       { id: 'desktop', label: 'tab.desktop' },
       { id: 'browser', label: 'tab.browser' },
       { id: 'automation', label: 'tab.automation' },
+      { id: 'minimax', label: 'tab.minimax' },
     ]
 
     /**
@@ -979,7 +1136,9 @@ window.__ModuleLoader__.load({
                 ? React.createElement(DesktopTab)
                 : tab === 'browser'
                   ? React.createElement(BrowserTab)
-                  : React.createElement(AutomationTab, { sessionId })
+                  : tab === 'automation'
+                    ? React.createElement(AutomationTab, { sessionId })
+                    : React.createElement(MinimaxTab)
 
       return React.createElement(
         'div',
@@ -1021,11 +1180,12 @@ window.__ModuleLoader__.load({
      * hardcoded "Agent desktop" would stop matching the moment the UI is Thai.
      */
     const ABSORBED_LABELS = [
-      // `agent-customization` is deliberately NOT hidden. Its only content is
-      // the deployment default model, and this page no longer shows it, so
-      // hiding the section would leave that setting reachable only by editing
-      // cordis.patch.yml. A hidden section with no replacement is worse than a
-      // visible one nobody uses.
+      // `agent-customization` is hidden on the owner's instruction: its one
+      // control is the deployment default model, which the owner does not use
+      // and sets in the profile instead. Hidden means the page above is the
+      // only entry, not that the setting stops working — the row stays active
+      // and cordis.patch.yml still owns the value.
+      { id: 'agent-customization', ns: 'settings.agentCustomization', key: 'agent.nav' },
       { id: 'agent-desktop', ns: 'settings.agent-desktop', key: 'nav' },
       { id: 'browser-use', ns: 'settings.browser-use', key: 'nav' },
       { id: 'automation', ns: 'settings.automation', key: 'nav' },
