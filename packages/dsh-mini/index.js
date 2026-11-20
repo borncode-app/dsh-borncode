@@ -629,11 +629,12 @@ export async function apply(ctx, config) {
         res.end(JSON.stringify(body))
       }
       if (req.method === 'GET' || req.method === 'HEAD') {
-        // A page that opens before the startup check has run would otherwise
-        // show an empty kit list and look broken. The first read pays for one
-        // fetch; every later read is served from the last reading.
-        const first = state.checkedAt === 0 && !busy
-        void (first ? check({ fetch: true }) : Promise.resolve())
+        // Reading the page must not show a reading older than the checkout:
+        // a cached "behind" or "dirty" survives a commit the user just made,
+        // and the page then contradicts `git status`. A read costs one local
+        // `git status` per repository (no network unless a check is asked for),
+        // which is cheap enough to do on every open.
+        void check({ fetch: false })
           .then(() => doctor())
           .then(() => reply(200, view()))
           .catch(error => {
