@@ -23,6 +23,9 @@ importers:
       '@local/dsh-browser-use':
         specifier: link:./packages/dsh-browser-use
         version: link:packages/dsh-browser-use
+      '@local/dsh-mini':
+        specifier: link:./packages/dsh-mini
+        version: link:packages/dsh-mini
       '@local/dsh-minimax-auth':
         specifier: link:./packages/dsh-minimax-auth
         version: link:packages/dsh-minimax-auth
@@ -79,6 +82,12 @@ importers:
         version: 3.19.0
 
   packages/dsh-browser-use:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: ~3.19.0
+        version: 3.19.0
+
+  packages/dsh-mini:
     dependencies:
       '@deepseek-ai/schemastery':
         specifier: ~3.19.0

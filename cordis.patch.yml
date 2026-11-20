@@ -311,3 +311,58 @@
         env:
           MCP_SKILLS_DB: 'C:\Users\snowb4ll\Tools\mcp-reverse\db\skills-full.db'
         toolCallTimeoutMs: 600000
+
+# ── Supervisor ───────────────────────────────────────────────────────────────
+#
+# It lives in this bundle on purpose: a supervisor that ships separately can
+# never update itself. `repos` names this checkout, so one fast-forward moves
+# the supervisor and every plugin it reports on together.
+- insert:
+    # The supervisor row. Read-only checks; the button moves the checkout.
+    - id: dsh-mini
+      name: '@local/dsh-mini'
+      config:
+        endpoint: /plugins/dsh-mini
+        autoCheck: true
+        autoApply: false
+        repos:
+          - id: borncode
+            label: BornCode bundle
+            path: C:/Users/snowb4ll/Documents/deepseek-harness/default-workspace/dsh-borncode
+            remote: origin
+            branch: main
+            # A bundle resolves its packages through its own node_modules, so a
+            # pull that adds a workspace package needs the graph regenerated.
+            install: true
+        packageManager: pnpm
+        probes:
+          - id: agent-customizer
+            label: Agent customization
+            path: /plugins/agent-customizer
+          - id: agent-desktop
+            label: Agent desktop
+            path: /plugins/agent-desktop
+          - id: auto-continue
+            label: Auto continue
+            path: /plugins/auto-continue
+          - id: auto-shutdown
+            label: Auto shutdown
+            path: /plugins/auto-shutdown
+          - id: browser-use
+            label: Browser use
+            path: /plugins/browser-use
+          - id: session-instructions
+            label: Session instructions
+            path: /plugins/session-instructions
+          - id: session-sync
+            label: Session sync
+            path: /plugins/session-sync
+          - id: side-chat
+            label: Side chat
+            path: /plugins/side-chat
+          - id: minimax-credit
+            label: MiniMax credit
+            path: /plugins/minimax-credit/status
+          - id: minimax-checkin
+            label: MiniMax check-in
+            path: /plugins/minimax-checkin/status

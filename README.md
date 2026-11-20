@@ -32,6 +32,7 @@ packages/
   dsh-minimax-web-search/  web search through MiniMax's native server tool
   dsh-minimax-bridge/      MiniMax Code's skills and agents
   dsh-model-quota/         the selected model's remaining quota
+  dsh-mini/                keeps this checkout current and reports what actually runs
 ```
 
 The MiniMax packages moved here from the former `dsh-minimax-kit` repository, so
@@ -57,6 +58,7 @@ schemas and their own switches; only the repository is shared.
 | `minimax-bridge` | `packages/dsh-minimax-bridge` | serves the MiniMax Code home's skills in place |
 | `minimax-agent-bridge` | `packages/dsh-minimax-bridge/agents` | publishes agents as Harness presets |
 | `minimax-mcp-*` | `@deepseek-ai/dsh-mcp-client` | the MiniMax Code MCP servers — **ship disabled**, because rea alone adds 229 tools to every request |
+| `dsh-mini` | `packages/dsh-mini` | keeps this checkout current (git fast-forward) and reports each row's Loader phase plus its published health route |
 
 ## Install
 

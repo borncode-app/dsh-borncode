@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="340" viewBox="0 0 640 340" role="img" aria-label="One supervisor card connecting to two separate kit repositories, each with its own commit row, beside a column of health dots">
+  <rect x="24" y="112" width="132" height="108" rx="16" fill="none" stroke="#6b7280" stroke-width="3"/>
+  <path d="M54 140a22 22 0 1 1-15.5 6.5" fill="none" stroke="#35c98a" stroke-width="4" stroke-linecap="round"/>
+  <path d="M38 136v11h11" fill="none" stroke="#35c98a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="90" cy="166" r="7" fill="#e0a11b"/>
+
+  <path d="M156 150H268" fill="none" stroke="#6b7280" stroke-width="2.5"/>
+  <path d="M156 182H268" fill="none" stroke="#6b7280" stroke-width="2.5"/>
+
+  <rect x="268" y="112" width="196" height="60" rx="12" fill="none" stroke="#2f7fd1" stroke-width="3"/>
+  <text x="284" y="138" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#9ca3af">BornCode kit</text>
+  <text x="284" y="158" font-family="ui-monospace, monospace" font-size="13" fill="#6b7280">8 rows · git</text>
+
+  <rect x="268" y="186" width="196" height="60" rx="12" fill="none" stroke="#2f7fd1" stroke-width="3"/>
+  <text x="284" y="212" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#9ca3af">MiniMax kit</text>
+  <text x="284" y="232" font-family="ui-monospace, monospace" font-size="13" fill="#6b7280">6 rows · git</text>
+
+  <text x="268" y="98" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#6b7280">two repositories, never merged</text>
+
+  <circle cx="520" cy="132" r="7" fill="#35c98a"/>
+  <circle cx="520" cy="160" r="7" fill="#35c98a"/>
+  <circle cx="520" cy="188" r="7" fill="#35c98a"/>
+  <circle cx="520" cy="216" r="7" fill="#e0a11b"/>
+  <circle cx="520" cy="244" r="7" fill="#6b7280"/>
+  <text x="540" y="137" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#9ca3af">active</text>
+  <text x="540" y="193" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#9ca3af">starting</text>
+  <text x="540" y="249" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#9ca3af">off</text>
+  <path d="M472 172H504" fill="none" stroke="#6b7280" stroke-width="2.5"/>
+</svg>

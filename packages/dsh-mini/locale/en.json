@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Plugin supervisor",
+    "description": "Keeps the BornCode and MiniMax kit checkouts current and reports whether every installed plugin is actually running. The kits stay separate repositories with separate rows: this bundle only fast-forwards their working trees with git, then asks the Host to recompose. Its health check reads each row's Loader phase and probes the health routes the bundles publish, so a plugin that crashed is named on one page instead of surfacing later as a failed tool call.",
+    "detail": "docs/DETAIL.md"
+  }
+}

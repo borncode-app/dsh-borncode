@@ -1,0 +1,74 @@
+# The supervisor row: keeps the checkout current and reports what actually runs.
+#
+# It lives inside the bundle it supervises, which is the point — a supervisor
+# that ships separately can never update itself. `repos` therefore names this
+# repository: the row reports how far this working tree is behind origin and
+# fast-forwards it, and every package in the bundle moves together.
+#
+# `probes` lists the health routes the rows publish. A row that crashed keeps an
+# honest Loader phase but cannot answer its own route, so both readings are
+# shown side by side and neither is treated as the whole truth.
+- insert:
+    - id: dsh-mini
+      name: '@local/dsh-mini'
+      config:
+        # Path the Web GUI reads and writes the supervisor's state at.
+        endpoint: /plugins/dsh-mini
+
+        # Check every launch. Read-only: this fetches and reports, never moves
+        # the checkout, so opening the Harness can never surprise you.
+        autoCheck: true
+        # Applying a waiting fast-forward still needs the button.
+        autoApply: false
+
+        # The checkout this row keeps current. It is this bundle's own
+        # repository, so one update covers the supervisor and every plugin it
+        # reports on. A pull is refused while the tree has uncommitted changes,
+        # and only ever fast-forwards.
+        repos:
+          - id: borncode
+            label: BornCode bundle
+            path: C:/Users/snowb4ll/Documents/deepseek-harness/default-workspace/dsh-borncode
+            remote: origin
+            branch: main
+            # A bundle resolves its packages through its own node_modules, so a
+            # pull that adds a workspace package needs the graph regenerated.
+            install: true
+
+        # Package manager run when a pull changes a manifest or the lockfile.
+        packageManager: pnpm
+
+        # Routes the rows in this bundle publish. Every entry below answers 200
+        # on this machine; a route that is not registered here would report a
+        # false failure, so add one only after confirming it answers.
+        probes:
+          - id: agent-customizer
+            label: Agent customization
+            path: /plugins/agent-customizer
+          - id: agent-desktop
+            label: Agent desktop
+            path: /plugins/agent-desktop
+          - id: auto-continue
+            label: Auto continue
+            path: /plugins/auto-continue
+          - id: auto-shutdown
+            label: Auto shutdown
+            path: /plugins/auto-shutdown
+          - id: browser-use
+            label: Browser use
+            path: /plugins/browser-use
+          - id: session-instructions
+            label: Session instructions
+            path: /plugins/session-instructions
+          - id: session-sync
+            label: Session sync
+            path: /plugins/session-sync
+          - id: side-chat
+            label: Side chat
+            path: /plugins/side-chat
+          - id: minimax-credit
+            label: MiniMax credit
+            path: /plugins/minimax-credit/status
+          - id: minimax-checkin
+            label: MiniMax check-in
+            path: /plugins/minimax-checkin/status

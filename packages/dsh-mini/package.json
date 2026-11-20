@@ -1,0 +1,56 @@
+{
+  "name": "@local/dsh-mini",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Keeps this bundle's checkout current and reports whether every row in it is actually running: a git fast-forward across the bundle, plus a doctor that reports each row's Loader phase and probes the health route the rows publish.",
+  "author": "BornCode (https://github.com/borncode-app)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/borncode-app/dsh-borncode.git"
+  },
+  "homepage": "https://github.com/borncode-app/dsh-borncode#readme",
+  "bugs": {
+    "url": "https://github.com/borncode-app/dsh-borncode/issues"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "dsh-plugin",
+    "updater",
+    "doctor",
+    "supervisor"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "docs",
+    "icon.svg",
+    "logo.svg",
+    "README.md"
+  ],
+  "dependencies": {
+    "@deepseek-ai/schemastery": "~3.19.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings"
+      ]
+    }
+  }
+}

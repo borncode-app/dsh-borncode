@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "插件管家",
+    "description": "让 BornCode 和 MiniMax 套件的检出保持最新，并报告每个已安装插件是否真的在运行。套件仍是各自独立的仓库和独立的行：此 bundle 只用 git 快进它们的工作树，然后让 Host 重新组合。健康检查读取每一行的 Loader 阶段，并探测各 bundle 发布的健康路由，崩溃的插件会直接列在一页上，而不是之后表现为失败的 tool call。",
+    "detail": "docs/DETAIL.md"
+  }
+}
