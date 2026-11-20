@@ -25,7 +25,18 @@ packages/
   dsh-session-instructions/ standing instructions read before any work starts
   dsh-session-sync/        imports Claude Code and MiniMax Code sessions
   dsh-side-chat/           a right-sidebar chat about the current session
+  dsh-minimax-auth/        the shared MiniMax Code grant reader and refresher
+  dsh-minimax-credit/      MiniMax credit proxy, failover and status
+  dsh-minimax-checkin/     the MiniMax daily check-in chip and tool
+  dsh-minimax-model-sync/  keeps an llm-pi-ai route's model list current
+  dsh-minimax-web-search/  web search through MiniMax's native server tool
+  dsh-minimax-bridge/      MiniMax Code's skills and agents
+  dsh-model-quota/         the selected model's remaining quota
 ```
+
+The MiniMax packages moved here from the former `dsh-minimax-kit` repository, so
+one bundle installs every kit. They keep their own rows, their own Config
+schemas and their own switches; only the repository is shared.
 
 ## What it inserts
 
@@ -39,6 +50,13 @@ packages/
 | `session-instructions` | `packages/dsh-session-instructions` | reads the standing instructions in **Settings → General → Instructions** before any work starts |
 | `session-sync` | `packages/dsh-session-sync` | imports Claude Code and MiniMax Code conversations as Sessions, flagged with their origin |
 | `side-chat` | `packages/dsh-side-chat` | a right-sidebar chat that answers questions about the current session |
+| `minimax-credit` | `packages/dsh-minimax-credit` | local Anthropic-Messages proxy at `127.0.0.1:45677` with credit failover |
+| `minimax-checkin` | `packages/dsh-minimax-checkin` | claims the MiniMax daily check-in reward and exposes the `minimax_daily_checkin` tool |
+| `minimax-model-sync` | `packages/dsh-minimax-model-sync` | keeps an `llm-pi-ai` route's model list in sync with the provider |
+| `minimax-web-search` | `packages/dsh-minimax-web-search` | web search through MiniMax's native `web_search` server tool |
+| `minimax-bridge` | `packages/dsh-minimax-bridge` | serves the MiniMax Code home's skills in place |
+| `minimax-agent-bridge` | `packages/dsh-minimax-bridge/agents` | publishes agents as Harness presets |
+| `minimax-mcp-*` | `@deepseek-ai/dsh-mcp-client` | the MiniMax Code MCP servers — **ship disabled**, because rea alone adds 229 tools to every request |
 
 ## Install
 
@@ -47,8 +65,8 @@ packages/
    row resolves by the package's own name and keeps its title, icon, and
    Config schema.
 
-If the eight standalone packages are also installed, turn them off in
-**Plugins** — otherwise their rows appear twice.
+If the standalone packages are also installed, turn them off in **Plugins** —
+otherwise their rows appear twice.
 
 ## Turn one part off
 
@@ -70,9 +88,8 @@ pnpm -r test          # each package keeps its own suite
   a quota plugin to answer for the model in use. It passes the failing model
   along with the provider, so a gateway route such as **Our Free Model**
   (provider `our-free-model`, models `claude/...` or `minimax/...`) resolves to
-  the right channel's reset time. With the MiniMax kit's `model-quota` that
-  reading comes from Our Free Model's gateway; without it the wait falls back to
-  a growing backoff.
+  the right channel's reset time. With `model-quota` (now in this bundle) that reading comes from Our Free
+  Model's gateway; without it the wait falls back to a growing backoff.
 
 ## License
 

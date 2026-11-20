@@ -23,6 +23,27 @@ importers:
       '@local/dsh-browser-use':
         specifier: link:./packages/dsh-browser-use
         version: link:packages/dsh-browser-use
+      '@local/dsh-minimax-auth':
+        specifier: link:./packages/dsh-minimax-auth
+        version: link:packages/dsh-minimax-auth
+      '@local/dsh-minimax-bridge':
+        specifier: link:./packages/dsh-minimax-bridge
+        version: link:packages/dsh-minimax-bridge
+      '@local/dsh-minimax-checkin':
+        specifier: link:./packages/dsh-minimax-checkin
+        version: link:packages/dsh-minimax-checkin
+      '@local/dsh-minimax-credit':
+        specifier: link:./packages/dsh-minimax-credit
+        version: link:packages/dsh-minimax-credit
+      '@local/dsh-minimax-model-sync':
+        specifier: link:./packages/dsh-minimax-model-sync
+        version: link:packages/dsh-minimax-model-sync
+      '@local/dsh-minimax-web-search':
+        specifier: link:./packages/dsh-minimax-web-search
+        version: link:packages/dsh-minimax-web-search
+      '@local/dsh-model-quota':
+        specifier: link:./packages/dsh-model-quota
+        version: link:packages/dsh-model-quota
       '@local/dsh-session-instructions':
         specifier: link:./packages/dsh-session-instructions
         version: link:packages/dsh-session-instructions
@@ -63,6 +84,59 @@ importers:
         specifier: ~3.19.0
         version: 3.19.0
 
+  packages/dsh-minimax-auth: {}
+
+  packages/dsh-minimax-bridge:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: ~3.19.0
+        version: 3.19.0
+      yaml:
+        specifier: ^2.8.1
+        version: 2.9.1
+
+  packages/dsh-minimax-checkin:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: ~3.19.0
+        version: 3.19.0
+      '@local/dsh-minimax-auth':
+        specifier: link:../dsh-minimax-auth
+        version: link:../dsh-minimax-auth
+
+  packages/dsh-minimax-credit:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: ~3.19.0
+        version: 3.19.0
+      '@local/dsh-minimax-auth':
+        specifier: link:../dsh-minimax-auth
+        version: link:../dsh-minimax-auth
+
+  packages/dsh-minimax-model-sync:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: ~3.19.0
+        version: 3.19.0
+
+  packages/dsh-minimax-web-search:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: ~3.19.0
+        version: 3.19.0
+      '@local/dsh-minimax-auth':
+        specifier: link:../dsh-minimax-auth
+        version: link:../dsh-minimax-auth
+
+  packages/dsh-model-quota:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: ~3.19.0
+        version: 3.19.0
+      '@local/dsh-minimax-auth':
+        specifier: link:../dsh-minimax-auth
+        version: link:../dsh-minimax-auth
+
   packages/dsh-session-instructions:
     dependencies:
       '@deepseek-ai/schemastery':
@@ -88,6 +162,11 @@ packages:
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
+  yaml@2.9.1:
+    resolution: {integrity: sha512-3NxN8+78OdzbT7C/WjGsyfPAtJaN3FNDsWxv7Y7mcDsT/oOmgW8BpyQQFFBnvZE3j9Y2Sdz1ULFLezL7Eb2yFw==}
+    engines: {node: '>= 14.6'}
+    hasBin: true
+
 snapshots:
 
   '@deepseek-ai/cosmokit@1.9.0': {}
@@ -98,3 +177,5 @@ snapshots:
       '@standard-schema/spec': 1.1.0
 
   '@standard-schema/spec@1.1.0': {}
+
+  yaml@2.9.1: {}

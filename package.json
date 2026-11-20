@@ -46,6 +46,13 @@
                          "@local/dsh-browser-use":  "link:./packages/dsh-browser-use",
                          "@local/dsh-session-instructions":  "link:./packages/dsh-session-instructions",
                          "@local/dsh-session-sync":  "link:./packages/dsh-session-sync",
-                         "@local/dsh-side-chat":  "link:./packages/dsh-side-chat"
+                         "@local/dsh-side-chat":  "link:./packages/dsh-side-chat",
+                         "@local/dsh-minimax-auth":  "link:./packages/dsh-minimax-auth",
+                         "@local/dsh-minimax-bridge":  "link:./packages/dsh-minimax-bridge",
+                         "@local/dsh-minimax-checkin":  "link:./packages/dsh-minimax-checkin",
+                         "@local/dsh-minimax-credit":  "link:./packages/dsh-minimax-credit",
+                         "@local/dsh-minimax-model-sync":  "link:./packages/dsh-minimax-model-sync",
+                         "@local/dsh-minimax-web-search":  "link:./packages/dsh-minimax-web-search",
+                         "@local/dsh-model-quota":  "link:./packages/dsh-model-quota"
                      }
 }
