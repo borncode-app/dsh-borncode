@@ -24,7 +24,6 @@ packages/
   dsh-browser-use/         native browser control through browser-use
   dsh-session-instructions/ standing instructions read before any work starts
   dsh-session-sync/        imports Claude Code and MiniMax Code sessions
-  dsh-side-chat/           a right-sidebar chat about the current session
   dsh-minimax-auth/        the shared MiniMax Code grant reader and refresher
   dsh-minimax-credit/      MiniMax credit proxy, failover and status
   dsh-minimax-checkin/     the MiniMax daily check-in chip and tool
@@ -50,7 +49,6 @@ schemas and their own switches; only the repository is shared.
 | `browser-use` | `packages/dsh-browser-use` | native browser control through `browser-use`, with its own Settings page |
 | `session-instructions` | `packages/dsh-session-instructions` | reads the standing instructions in **Settings → General → Instructions** before any work starts |
 | `session-sync` | `packages/dsh-session-sync` | imports Claude Code and MiniMax Code conversations as Sessions, flagged with their origin |
-| `side-chat` | `packages/dsh-side-chat` | a right-sidebar chat that answers questions about the current session |
 | `minimax-credit` | `packages/dsh-minimax-credit` | local Anthropic-Messages proxy at `127.0.0.1:45677` with credit failover |
 | `minimax-checkin` | `packages/dsh-minimax-checkin` | claims the MiniMax daily check-in reward and exposes the `minimax_daily_checkin` tool |
 | `minimax-model-sync` | `packages/dsh-minimax-model-sync` | keeps an `llm-pi-ai` route's model list in sync with the provider |

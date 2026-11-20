@@ -129,15 +129,6 @@
         # Per-message character budget; longer bodies are truncated visibly.
         maxTextChars: 20000
 
-    # A right-sidebar chat that answers questions about the current session.
-    - id: side-chat
-      name: '@local/dsh-side-chat'
-      config:
-        endpoint: /plugins/side-chat
-        provider: deepseek-account
-        model: deepseek-flash
-        maxChars: 48000
-        maxMessageChars: 4000
 
 
 # ── MiniMax plugins ─────────────────────────────────────────────────────────
@@ -357,9 +348,6 @@
           - id: session-sync
             label: Session sync
             path: /plugins/session-sync
-          - id: side-chat
-            label: Side chat
-            path: /plugins/side-chat
           - id: minimax-credit
             label: MiniMax credit
             path: /plugins/minimax-credit/status

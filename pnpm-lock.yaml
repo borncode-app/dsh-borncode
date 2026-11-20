@@ -53,9 +53,6 @@ importers:
       '@local/dsh-session-sync':
         specifier: link:./packages/dsh-session-sync
         version: link:packages/dsh-session-sync
-      '@local/dsh-side-chat':
-        specifier: link:./packages/dsh-side-chat
-        version: link:packages/dsh-side-chat
 
   packages/dsh-agent-customizer:
     dependencies:
@@ -153,12 +150,6 @@ importers:
         version: 3.19.0
 
   packages/dsh-session-sync: {}
-
-  packages/dsh-side-chat:
-    dependencies:
-      '@deepseek-ai/schemastery':
-        specifier: ~3.19.0
-        version: 3.19.0
 
 packages:
 
