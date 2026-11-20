@@ -521,11 +521,17 @@ export async function apply(ctx, config) {
       }
     }
     const verdicts = rows.map(verdictOf)
-    const counted = { total: verdicts.length, active: 0, failed: 0, off: 0, starting: 0, idle: 0 }
-    for (const row of verdicts) {
+    // `total` counts the rows that are meant to run. A row the user turned off
+    // is not part of the live system, so counting it made every number look
+    // worse than it was: 242 total against 212 running read as 30 failures
+    // when those 30 were switches the user had chosen to leave off. The off
+    // rows stay in `rows` (so the page can still list them) and their count
+    // stays in `off`, but they no longer inflate the headline.
+    const enabled = verdicts.filter(row => row.enabled)
+    const counted = { total: enabled.length, active: 0, failed: 0, off: verdicts.length - enabled.length, starting: 0, idle: 0 }
+    for (const row of enabled) {
       if (row.verdict === 'ok') counted.active += 1
       else if (row.verdict === 'failed') counted.failed += 1
-      else if (row.verdict === 'off') counted.off += 1
       else if (row.verdict === 'idle') counted.idle += 1
       else counted.starting += 1
     }

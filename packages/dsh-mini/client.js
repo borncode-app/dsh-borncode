@@ -66,7 +66,6 @@ window.__ModuleLoader__.load({
       'noProbes': 'No health route is configured for this row yet.',
       'active': 'Running',
       'failed': 'Failed',
-      'off': 'Turned off',
       'starting': 'Starting',
       'idle': 'Not loaded',
       'ok': 'Answering',
@@ -162,7 +161,6 @@ window.__ModuleLoader__.load({
       'noProbes': 'row นี้ยังไม่ได้ตั้งเส้นทางสุขภาพ',
       'active': 'ทำงานอยู่',
       'failed': 'พัง',
-      'off': 'ปิดอยู่',
       'starting': 'กำลังเริ่ม',
       'idle': 'ยังไม่โหลด',
       'ok': 'ตอบสนอง',
@@ -258,7 +256,6 @@ window.__ModuleLoader__.load({
       'noProbes': '此条目尚未配置健康路由。',
       'active': '运行中',
       'failed': '失败',
-      'off': '已关闭',
       'starting': '启动中',
       'idle': '未加载',
       'ok': '有响应',
@@ -516,7 +513,7 @@ window.__ModuleLoader__.load({
             { style: styles.rowBetween },
             React.createElement('span', null,
               `${t('rows')}: ${doctor.total ?? 0} · ${t('active')}: ${doctor.active ?? 0}`
-              + ` · ${t('failed')}: ${doctor.failed ?? 0} · ${t('off')}: ${doctor.off ?? 0}`),
+              + ` · ${t('failed')}: ${doctor.failed ?? 0}`),
             React.createElement(
               'span',
               { style: { color: (doctor.problems ?? []).length === 0 ? SUCCESS : WARNING } },
@@ -594,7 +591,7 @@ window.__ModuleLoader__.load({
             React.createElement('strong', null, t('tab.health')),
             React.createElement('span', { style: styles.muted },
               `${t('rows')}: ${doctor.total ?? 0} · ${t('active')}: ${doctor.active ?? 0}`
-              + ` · ${t('failed')}: ${doctor.failed ?? 0} · ${t('off')}: ${doctor.off ?? 0}`),
+              + ` · ${t('failed')}: ${doctor.failed ?? 0}`),
           ),
           doctor.rowsError
             ? React.createElement('div', { style: { color: DANGER, marginTop: '8px' } }, doctor.rowsError)
