@@ -28,7 +28,7 @@
         repos:
           - id: borncode
             label: BornCode bundle
-            path: C:/Users/snowb4ll/Documents/deepseek-harness/default-workspace/dsh-borncode
+            path: C:/Users/piyabordee.p/.dsh/plugins/dsh-borncode
             remote: origin
             branch: main
             # A bundle resolves its packages through its own node_modules, so a
